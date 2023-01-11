@@ -38,7 +38,7 @@ plot(species_accumulation)
 #Ambient samples
 
 ambientcleanOTUs <-filter(widecleanOTUs, drt_trt == "ambient")
-species_accumulation_ambient<- specaccum(ambientcleanOTUs[, 7:188])
+species_accumulation_ambient<- specaccum(ambientcleanOTUs[, 7:188], method="collector")
 plot(species_accumulation_ambient)
   
 #Droughted samples 
@@ -50,7 +50,7 @@ plot(species_accumulation_droughted)
 #Clarksville samples
 
 CvillecleanOTUs <-filter(widecleanOTUs, site == "C")
-species_accumulation_Cville<- specaccum(CvillecleanOTUs[, 7:188])
+species_accumulation_Cville<- specaccum(CvillecleanOTUs[, 7:188], method="collector")
 plot(species_accumulation_Cville)
 
 #Keedysville samples 
@@ -75,5 +75,10 @@ plot(species_accumulation_PopHill)
 #Among sites: some overlap (OTU 1)
 
 
-
+#Look at new data
+#Make these curves for each site separated by droughted by undroughted
+#Want about the same number of samples for each of these curves
+#If we need more samples, target specifically ones that will even things out
+#Finish prepping for sequencing and send off ones I have already done in the fridge
+#Let the group know details of the results 
 
