@@ -1,5 +1,5 @@
 ################################################################################
-##  clean_harvest.R: Cleaning harvest data.
+##  clean_harvest.R: Cleaning and combining variety trial harvest metrics
 ##
 ##  Author: Kelsey McGurrin
 ################################################################################
@@ -7,6 +7,8 @@
 ####setup####
 library(readxl)
 library(tidyverse)
+
+# working directory path (add yours if different)
 setwd("~/Dropbox/bean_dip_2018-2024/field trials/data")
 
 ####2019####
@@ -199,3 +201,31 @@ harvest<-select(harvest,-c(date,notes.x,notes.y,sampling_round))
 
 #output cleaned file, should have 264 rows total
 write.csv(harvest,file="clean_data/clean_harvest_2021.csv",row.names = F)
+
+#### 2022 ####
+#aboveground biomass
+data <- read_excel("raw_data/beanDIP_2022_aboveground_soybean_biomass.xlsx")
+data<-rename(data,plant_biomass_g=dry_mass_g,notes=`...7`)
+data<-select(data,-notes)
+
+#add in nodule data
+nodules<-read_excel("raw_data/beanDIP 2022 nodule and root collar data.xlsx")
+# duplicate values for PH plot 3 indiv 4 - missing value for W plot 3 indiv 4. based on other plant size values, PH is collar 9.6 - W is 11.7
+nodules$site[nodules$plot==3 & nodules$indiv==4 & nodules$root_collar_diameter_mm == 11.7]<-"W"
+nodules<-select(nodules,-c(notes,harvest_date))
+harvest<-left_join(data,nodules,by=c("site", "variety", "plot", "indiv"))
+
+#add in pheno stage at harvest so we can group by it
+# pheno<-read.csv("clean_data/clean_pheno_2021.csv")
+# harvest<-left_join(harvest,pheno,by=c("site", "variety", "plot", "indiv"))
+# harvest<-select(harvest,-c(date,notes.x,notes.y,sampling_round))
+
+#add in root biomass data
+roots<-read_excel("raw_data/beanDIP 2022 root biomass weight data.xlsx")
+roots<-rename(roots,root_biomass_g=weight_g)
+#duplicate values for PH plot 1 indiv 1 - missing value for PH plot 3 indiv 1. based on other plant size values, 2.28 is plot 1 - 0.93 is plot 3
+roots$plot[roots$site=="PH" & roots$indiv==1 & roots$root_biomass_g == 0.9363]<-3
+harvest<-left_join(harvest,roots,by=c("site", "variety", "plot", "indiv"))
+
+#output cleaned file, should have 72 rows total
+write.csv(harvest,file="clean_data/clean_harvest_2022.csv",row.names = F)
