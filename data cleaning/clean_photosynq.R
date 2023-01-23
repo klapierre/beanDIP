@@ -127,3 +127,22 @@ datab$Site[date(datab$day)=="2021-08-18"]<-"Poplar Hill"
 #output cleaned file
 write.csv(datab,file="clean_data/clean_photosynq_2021.csv",row.names = F)
 
+####2022####
+data <- read.csv("raw_data/2022_Leaf_multispec.csv")
+
+# filter out other stuff- greenhouse data? 
+# by keeping only rows where "note" begins with uppercase letter
+svt<-filter(data,note %in% str_subset(data$note, "[:upper:]"))
+
+# manually divide into site, variety, plot, indiv according to "note" column
+# some had spaces separating, some had dashes separating, 1 had typo- fixed in Excel
+svt<-svt %>%
+  separate(standard_note,into= c("Site","Variety", "Plot", "i"), sep = " ") %>%
+  separate(i,into = c(NA,"Indiv"),sep = 1)
+
+#drop extra columns
+datab<-svt %>%
+  select(-c(Issues,note))
+
+#output cleaned file
+write.csv(datab,file="clean_data/clean_photosynq_2022.csv",row.names = F)
