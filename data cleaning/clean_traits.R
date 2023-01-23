@@ -111,3 +111,30 @@ all<-left_join(traits,all,by=c("site", "variety","plot","indiv"))
 
 #still has 2 extra rows?
 write.csv(all,file="clean_data/clean_traits_2021.csv",row.names = F)
+
+####2022####
+#pressure chamber
+lwp<-read_excel("raw_data/2022_leaftraits_pressureChamber.xlsx")
+site_key <- c("clarksville" = "C","keedysville" = "K","poplar hill"= "PH","wye"="W")
+lwp$site<-recode(lwp$site, !!!site_key)
+lwp<-rename(lwp,indiv=individual,pressure_chamber=lwp_bar)
+lwp<-select(lwp,-c(date,notes))
+
+#other manual traits
+traits<-read_excel("raw_data/LeafTraits_BeanDip2022_fieldTrials.xlsx")
+traits$site<-recode(traits$site, !!!site_key)
+traits<-rename(traits,indiv=leaf,wet_mass=wet_mass_g,toughness_1=toughness1,toughness_2=toughness2,dry_mass=dry_mass_g)
+#fix one weird decimal place (should be 110.379 instead of 110379.000)
+traits$leaf_area_cm_1[traits$site=="W" & traits$plot==1 & traits$indiv==2]<-110.379
+
+#add in clean photosynq data
+photosynq<-read_csv("clean_data/clean_photosynq_2022.csv")
+photosynq<-rename(photosynq,site=Site,variety=Variety,plot=Plot,indiv=Indiv)
+photosynq<-select(photosynq,Ambient.Humidity:Time.of.Day,site:indiv)
+
+#combine and output
+all<-left_join(lwp,photosynq,by=c("site", "variety","plot","indiv"))
+all<-left_join(traits,all,by=c("site", "variety","plot","indiv"))
+
+#should have 72 rows
+write.csv(all,file="clean_data/clean_traits_2022.csv",row.names = F)
