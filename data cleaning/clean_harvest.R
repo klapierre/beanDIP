@@ -190,14 +190,23 @@ harvest<-left_join(data,nodules,by=c("site", "variety", "plot", "indiv"))
 
 #add in pheno stage at harvest so we can group by it
 pheno<-read.csv("clean_data/clean_pheno_2021.csv")
+#select only harvest date
+pheno<-filter(pheno,sampling_round==4)
 harvest<-left_join(harvest,pheno,by=c("site", "variety", "plot", "indiv"))
 harvest<-select(harvest,-c(date,notes.x,notes.y,sampling_round))
 
 #add in root biomass data
-# roots<-read_excel("raw_data/beanDIP 2021 root biomass weight data.xlsx")
-# roots<-rename(roots,site=Site,variety="Variety #", plot="Plot #", indiv="Plant #",root_biomass_g="Root biomass (g)")
-# harvest<-left_join(harvest,roots,by=c("site", "variety", "plot", "indiv"))
-
+roots<-read_excel("raw_data/beanDIP 2021 root biomass weight data.xlsx")
+roots<-roots %>% 
+  rename(root_biomass_g=weight_g,notes="...6") %>%
+  select(-notes)
+#change label P to PH in site
+roots$site[roots$site=="P"]<-"PH"
+# duplicate PH 58-1-3 roots, and PH 58-3-1 root missing
+# based on other metrics, 58-1-3 is the bigger number
+roots$plot[roots$site=="PH" & roots$variety==58 & roots$root_biomass_g==0.9129]<-3
+roots$indiv[roots$site=="PH" & roots$variety==58 & roots$root_biomass_g==0.9129]<-1
+harvest<-left_join(harvest,roots,by=c("site", "variety", "plot", "indiv"))
 
 #output cleaned file, should have 264 rows total
 write.csv(harvest,file="clean_data/clean_harvest_2021.csv",row.names = F)
@@ -216,9 +225,11 @@ nodules<-select(nodules,-c(notes,harvest_date))
 harvest<-left_join(data,nodules,by=c("site", "variety", "plot", "indiv"))
 
 #add in pheno stage at harvest so we can group by it
-# pheno<-read.csv("clean_data/clean_pheno_2021.csv")
-# harvest<-left_join(harvest,pheno,by=c("site", "variety", "plot", "indiv"))
-# harvest<-select(harvest,-c(date,notes.x,notes.y,sampling_round))
+pheno<-read.csv("clean_data/clean_pheno_2022.csv")
+#select only harvest date
+pheno<-filter(pheno,sampling_round==4)
+harvest<-left_join(harvest,pheno,by=c("site", "variety", "plot", "indiv"))
+harvest<-select(harvest,-c(date,notes.x,notes.y,sampling_round))
 
 #add in root biomass data
 roots<-read_excel("raw_data/beanDIP 2022 root biomass weight data.xlsx")
