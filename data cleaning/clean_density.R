@@ -65,3 +65,28 @@ densb<-mutate(densb,diff=final-initial)
 
 #output clean csv
 write.csv(densb,file="clean_data/clean_density_2021.csv",row.names = F)
+
+####2022####
+#separate and clean density data
+damage<- read_excel("raw_data/svt_2022_damage_soil_data.xlsx",sheet = "damage_row")
+damage<-rename(damage,samp_round="sampling round")
+
+#include sampling round because have both initial and harvest data
+dens<-select(damage,samp_round,site,variety,plot,row,density)
+
+#make new df for data with 1 column initial, 1 final
+densb<-filter(dens,samp_round %in% c(1,4))
+densb$timing<-recode(densb$samp_round,
+                     "1"="initial","4"="final")
+
+densb<-densb %>%
+  group_by(site,variety,plot,row,timing) %>%
+  summarise(density = mean(density,na.rm = T))
+
+densb<-pivot_wider(densb,names_from = timing,values_from = density)
+
+#check for changes in density
+densb<-mutate(densb,diff=final-initial)
+
+#output clean csv (should be 24 rows)
+write.csv(densb,file="clean_data/clean_density_2022.csv",row.names = F)
