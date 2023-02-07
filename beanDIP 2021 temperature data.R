@@ -14,49 +14,48 @@
 #For some reason 12:00 will appear next to all the dates, to fix, hold control +1, and select 
 
 library(tidyverse)
+library(ggplot2)
 
 
 #Set working directory
 
 #Laptop
-setwd("C:/Users/Sarah Alley/Dropbox (Smithsonian)/Important work stuff/Everything Else/HOBOware/Temperature 2021/Ready for R")
+setwd("C:/Users/Sarah Alley/Dropbox (Smithsonian)/bean_dip_2018-2024/field trials/data/raw_data/HOBO soil moisture and temperature data/Temperature 2021/Ready for R")
 
-#Work computer
-setwd("C:/Users/AlleyS/Dropbox (Smithsonian)/Important work stuff/Everything Else/HOBOware/Temperature 2021/Ready for R")
 
 #Reading in data
 
 Cs<-read.csv("Clarksville_Shielded_2021_forR.csv")%>%
   mutate(site="Clarksville",shielded="yes") %>% 
-  rename(obs=ï..obs)
+  rename(obs=Ã¯..obs)
 
 Cu<-read.csv("Clarksville_Unshielded_2021_forR.csv")%>%
   mutate(site="Clarksville",shielded="no") %>% 
-  rename(obs=ï..obs)
+  rename(obs=Ã¯..obs)
 
 Ks<-read.csv("Keedysville_Shielded_2021_forR.csv")%>%
   mutate(site="Keedysville",shielded="yes") %>% 
-  rename(obs=ï..obs)
+  rename(obs=Ã¯..obs)
 
 Ku<-read.csv("Keedysville_Unshielded_2021_forR.csv")%>%
   mutate(site="Keedysville",shielded="no") %>% 
-  rename(obs=ï..obs)
+  rename(obs=Ã¯..obs)
 
 Ws<-read.csv("Wye_Shielded_2021_forR.csv")%>%
   mutate(site="Wye",shielded="yes") %>% 
-  rename(obs=ï..obs)
+  rename(obs=Ã¯..obs)
 
 Wu<-read.csv("Wye_Unshielded_2021_forR.csv")%>%
   mutate(site="Wye",shielded="no") %>% 
-  rename(obs=ï..obs)
+  rename(obs=Ã¯..obs)
 
 PHs<-read.csv("Poplar_Hill_Shielded_2021_forR.csv")%>%
   mutate(site="Poplar Hill",shielded="yes") %>% 
-  rename(obs=ï..obs)
+  rename(obs=Ã¯..obs)
 
 PHu<-read.csv("Poplar_Hill_Unshielded_2021_forR.csv")%>%
   mutate(site="Poplar Hill",shielded="no") %>% 
-  rename(obs=ï..obs)
+  rename(obs=Ã¯..obs)
 
 #Linking data together, switching to 24 hr time instead of am/pm
 
@@ -64,6 +63,24 @@ temperature <- Cs%>%rbind(Cu)%>%rbind(Ks)%>%rbind(Ku)%>%rbind(Ws)%>%
   rbind(Wu)%>%rbind(PHs)%>%rbind(PHu)%>%
   unite(time_am_pm, c(date, time, am_pm), sep=" ") %>% 
   mutate(time_24hr=as.POSIXct(strptime(time_am_pm,"%m/%d/%Y %I:%M:%S %p")))
+
+#Converting temperatures from C to F
+temperatureF <- mutate(temperature, temp_F = temp*(9/5)+32)
+
+temperatureFfinal <- select
+
+#Exact same code worked for 2020 data, not sure why it's giving an error message now 
+ggplot(data=temperatureFfinal,aes(x=time_24hr, y=temp_F,color=as.factor(shielded))) + 
+  geom_line()+
+  ggtitle("beanDIP 2021 Temperature Data")+
+  guides(col=guide_legend("Shielded"))+
+  ylab('Temperature (F)') + xlab('Date')+
+  facet_wrap(~site)
+
+
+
+
+
 
 #Last time we did this to pick the lower of the two temperature measurements at a given time at a given site for shielded vs. unshielded
 #Since shielded is better for day, unshielded better for night 
