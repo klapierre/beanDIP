@@ -21,54 +21,53 @@ library(tidyverse)
 #PH: same pattern, but values off 
 
 #Laptop
-setwd("C:/Users/Sarah Alley/Dropbox (Smithsonian)/Important work stuff/Everything Else/HOBOware/Soil Moisture 2021/Ready for R")
 
-#Work Computer
-setwd("C:/Users/AlleyS/Dropbox (Smithsonian)/Important work stuff/Everything Else/HOBOware/Soil Moisture 2021/Ready for R")
+setwd("C:/Users/Sarah Alley/Dropbox (Smithsonian)/Work Stuff/HOBOware/Soil Moisture 2021/Ready for R")
+
 
 C19_1<-read.csv("Clarksville_19-1_forR.csv")%>%
   mutate(site="Clarksville", plot=1) %>% 
-  rename(obs=ï..obs)
+  rename(obs=Ã¯..obs)
 
 C19_2<-read.csv("Clarksville_19-2_forR.csv")%>%
   mutate(site="Clarksville", plot=2) %>% 
-  rename(obs=ï..obs)
+  rename(obs=Ã¯..obs)
 
 C19_3<-read.csv("Clarksville_19-3_forR.csv")%>%
   mutate(site="Clarksville", plot=3) %>% 
-  rename(obs=ï..obs)
+  rename(obs=Ã¯..obs)
 
 K19_1<-read.csv("Keedysville_19-1_forR.csv")%>%
   mutate(site="Keedysville", plot=1) %>% 
-  rename(obs=ï..obs)
+  rename(obs=Ã¯..obs)
 
 K19_2<-read.csv("Keedsyville_19-2_forR.csv")%>%
   mutate(site="Keedysville", plot=2) %>% 
-  rename(obs=ï..obs)
+  rename(obs=Ã¯..obs)
 
 K19_3<-read.csv("Keedysville_19-3_forR.csv")%>%
   mutate(site="Keedysville", plot=3) %>% 
-  rename(obs=ï..obs)
+  rename(obs=Ã¯..obs)
 
 P19_1<-read.csv("Poplar_Hill_19-1_forR.csv")%>%
   mutate(site="Poplar Hill", plot=1) %>% 
-  rename(obs=ï..obs)
+  rename(obs=Ã¯..obs)
 
 P19_2<-read.csv("Poplar_Hill_19-2_forR.csv")%>%
   mutate(site="Poplar Hill", plot=2) %>% 
-  rename(obs=ï..obs)
+  rename(obs=Ã¯..obs)
 
 W19_1<-read.csv("Wye_19-1_forR.csv")%>%
   mutate(site="Wye", plot=1) %>% 
-  rename(obs=ï..obs)
+  rename(obs=Ã¯..obs)
 
 W19_2<-read.csv("Wye_19-2_forR.csv")%>%
   mutate(site="Wye", plot=2) %>% 
-  rename(obs=ï..obs)
+  rename(obs=Ã¯..obs)
 
 W19_3<-read.csv("Wye_19-3_forR.csv")%>%
   mutate(site="Wye", plot=3) %>% 
-  rename(obs=ï..obs)
+  rename(obs=Ã¯..obs)
 
 #Hm... so we formatted our data to have date, time, am_pm in separate columns (guess I didn't need to do that)
 #Here it's using a unite statement to put them back together
