@@ -2,7 +2,7 @@
 
 library(tidyverse)
 
-setwd("C:\\Users\\Sarah Alley\\Documents\\Work Stuff\\HOBOware\\Temperature\\Temperature ready for R")
+setwd("C:/Users/Sarah Alley/Dropbox (Smithsonian)/bean_dip_2018-2024/field trials/data/raw_data/HOBO soil moisture and temperature data/Temperature 2020/Temperature ready for R")
 
 #Reading in data
 #Ooh, ok yay, I got it to to work! Since whether it's shielded or unshielded is yes or no, a word, not a number, it needs to be in quotes. 
@@ -10,35 +10,35 @@ setwd("C:\\Users\\Sarah Alley\\Documents\\Work Stuff\\HOBOware\\Temperature\\Tem
 
 Cs<-read.csv("Cshieldedcomplete for R.csv")%>%
   mutate(site="Clarksville",shielded="yes") %>% 
-  rename(obs=ï..obs)
+  rename(obs=Ã¯..obs)
 
 Cu<-read.csv("Cunshieldedcomplete for R.csv")%>%
   mutate(site="Clarksville",shielded="no") %>% 
-  rename(obs=ï..obs)
+  rename(obs=Ã¯..obs)
 
 Ks<-read.csv("Kshieldedcomplete for R.csv")%>%
   mutate(site="Keedysville",shielded="yes") %>% 
-  rename(obs=ï..obs)
+  rename(obs=Ã¯..obs)
 
 Ku<-read.csv("Kunshieldedcomplete for R.csv")%>%
   mutate(site="Keedysville",shielded="no") %>% 
-  rename(obs=ï..obs)
+  rename(obs=Ã¯..obs)
 
 Ws<-read.csv("Wshieldedcomplete for R.csv")%>%
   mutate(site="Wye",shielded="yes") %>% 
-  rename(obs=ï..obs)
+  rename(obs=Ã¯..obs)
 
 Wu<-read.csv("Wunshieldedcomplete for R.csv")%>%
   mutate(site="Wye",shielded="no") %>% 
-  rename(obs=ï..obs)
+  rename(obs=Ã¯..obs)
 
 PHs<-read.csv("PHshieldedcomplete forR.csv")%>%
   mutate(site="Poplar Hill",shielded="yes") %>% 
-  rename(obs=ï..obs)
+  rename(obs=Ã¯..obs)
 
 PHu<-read.csv("PHunshieldedcomplete for R.csv")%>%
   mutate(site="Poplar Hill",shielded="no") %>% 
-  rename(obs=ï..obs)
+  rename(obs=Ã¯..obs)
 
 #Now to link all the data together and to make the times 24-hr. 
 
@@ -47,16 +47,24 @@ temperature <- Cs%>%rbind(Cu)%>%rbind(Ks)%>%rbind(Ku)%>%rbind(Ws)%>%
   unite(time_am_pm, c(date, time, am_pm), sep=" ") %>% 
   mutate(time_24hr=as.POSIXct(strptime(time_am_pm,"%m/%d/%Y %I:%M:%S %p")))
 
+#Converting temperatures from C to F
+temperatureF <- mutate(temperature, temp_F = temp*(9/5)+32)
+
+temperatureFfinal <- select(temperatureF, -temp)
+  
+
 #Now to make graphs! We want shielded/unshielded on the same graph with one panel for each site. 
 #Why does it say the 'subset' must be logical? I want the temperature data (named temp) from the data set temperature... I feel like this should work! 
 #Would the factor here be "shielded"/"unshielded"? I think yes... 
 
 #Subsetting removes rows, not columns, so this doesn't really work here. You tell R what you want to graph when you tell it what you want on the axes. 
 
-ggplot(data=subset(temperature, temp),aes(x=time_24hr, y=temp,color=as.factor(shielded))) + 
+#This code doesn't work 
+ggplot(data=subset(temperatureFfinal, temp_F),aes(x=time_24hr, y=temp,color=as.factor(shielded))) + 
   geom_line()+
   scale_x_datetime(date_labels= "%Y-%m-%d %HH:%MM:%SS")+
   facet_wrap(~site)
+
 
 #Ok, well it works when I don't subset the data and tell it I want it to plot temperature as y=
 #I'm also unsure of why it's not showing the unshielded data for Keedysville...
@@ -64,10 +72,24 @@ ggplot(data=subset(temperature, temp),aes(x=time_24hr, y=temp,color=as.factor(sh
 #So they sat in a hot truck for a day before they were installed in the field, need to get rid of the first day's data 
 #It's nice you don't really notice the two week gap of missing data too much! 
 
-ggplot(data=temperature,aes(x=time_24hr, y=temp,color=as.factor(shielded))) + 
+#This code works but date axis is super messy 
+ggplot(data=temperatureFfinal,aes(x=time_24hr, y=temp_F,color=as.factor(shielded))) + 
   geom_line()+
   scale_x_datetime(date_labels= "%Y-%m-%d %HH:%MM:%SS")+
+  ggtitle("beanDIP 2020 Temperature Data")+
+  guides(col=guide_legend("Shielded"))+
+  ylab('Temperature (F)') + xlab('Date')+
   facet_wrap(~site)
+
+#Date easier to look at in this version 
+ggplot(data=temperatureFfinal,aes(x=time_24hr, y=temp_F,color=as.factor(shielded))) + 
+  geom_line()+
+  ggtitle("beanDIP 2020 Temperature Data")+
+  guides(col=guide_legend("Shielded"))+
+  ylab('Temperature (F)') + xlab('Date')+
+  facet_wrap(~site)
+
+
 
 #To show just one site
 

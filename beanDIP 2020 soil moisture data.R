@@ -1,10 +1,8 @@
 library(tidyverse)
 
 #Laptop
-setwd("C:\\Users\\Sarah Alley\\Documents\\Work Stuff\\HOBOware\\Soil Moisture\\Soil moisture ready for R")
 
-#Work Computer 
-setwd("C:/Users/AlleyS/Dropbox (Smithsonian)/Important work stuff/Everything Else/HOBOware/Soil Moisture 2020/Soil moisture ready for R")
+setwd("C:/Users/Sarah Alley/Dropbox (Smithsonian)/bean_dip_2018-2024/field trials/data/raw_data/HOBO soil moisture and temperature data/Soil Moisture 2020/Soil moisture ready for R")
 
 #Reading in data 
 #Had to rename some of the observation columns because for some reason R thinks they were called obs=i, even though that's not what they're named in Excel file.  
@@ -15,35 +13,35 @@ K2_1<-read.csv("K2-1complete for R.csv") %>%
 
 K2_2<-read.csv("K2-2complete for R.csv")%>%
   mutate(site="Keedysville", plot=2) %>% 
-  rename(obs=ï..obs)
+  rename(obs=Ã¯..obs)
 
 K2_3<-read.csv("K2-3complete for R.csv")%>%
   mutate(site="Keedysville", plot=3) %>%
-  rename(obs=ï..obs)
+  rename(obs=Ã¯..obs)
 
 C2_1<-read.csv("C2-1complete for R.csv") %>%
 mutate(site="Clarksville", plot=1) %>%
-  rename(obs=ï..obs)
+  rename(obs=Ã¯..obs)
 
 C2_2<-read.csv("C2-2complete for R.csv") %>%
   mutate(site="Clarksville", plot=2) %>%
-  rename(obs=ï..obs)
+  rename(obs=Ã¯..obs)
 
 C2_3<-read.csv("C2-3complete for R.csv") %>%
   mutate(site="Clarksville", plot=3) %>%
-  rename(obs=ï..obs)
+  rename(obs=Ã¯..obs)
 
 W2_1<-read.csv("W2-1complete for R.csv") %>%
   mutate(site="Wye", plot=1) %>%
-rename(obs=ï..obs)
+rename(obs=Ã¯..obs)
 
 W2_2<-read.csv("W2-2complete for R.csv") %>%
   mutate(site="Wye", plot=2) %>%
-rename(obs=ï..obs)
+rename(obs=Ã¯..obs)
 
 W2_3<-read.csv("W2-3complete for R.csv") %>%
   mutate(site="Wye", plot=3) %>%
-rename(obs=ï..obs)
+rename(obs=Ã¯..obs)
 
 #For Poplar Hill data (where all 3 sensors were either chewed or thrown out of the ground):
 #2-1, the big chunk of missing data in the middle of the summer is due to the dates being thrown way off for some reason... 
@@ -53,15 +51,15 @@ rename(obs=ï..obs)
 
 PH2_1<-read.csv("PH2-1useable for R.csv") %>%
   mutate(site="Poplar Hill", plot=1)%>% 
-  rename(obs=ï..obs)
+  rename(obs=Ã¯..obs)
 
 PH2_2<-read.csv("PH2-2useable for R.csv") %>%
   mutate(site="Poplar Hill", plot=2)%>% 
-  rename(obs=ï..obs)
+  rename(obs=Ã¯..obs)
 
 PH2_3<-read.csv("PH2-3useable for R.csv") %>%
   mutate(site="Poplar Hill", plot=3) %>%
-  rename(obs=ï..obs)
+  rename(obs=Ã¯..obs)
   
 
 #Combining soil moisture data from the 3 plots and making the am/pm times into 24 hour times 
@@ -96,13 +94,22 @@ soilmoisture <- K2_1%>%rbind(K2_2)%>%rbind(K2_3)%>%rbind(C2_1)%>%rbind(C2_2)%>%
     unite(time_am_pm, c(date, time, am_pm), sep=" ") %>% 
     mutate(time_24hr=as.POSIXct(strptime(time_am_pm,"%m/%d/%Y %I:%M:%S %p")))%>%
     mutate(drop=ifelse(site=="Wye"&plot==3,"drop", "keep"))
+  
 
 #Making graphs! Facet wrap means is makes a separate panel for each site (this code with the dataset soilmoisture is just for W, C, and K)
 
-ggplot(data=subset(soilmoisture,drop!="drop"),aes(x=time_24hr, y=water_content,color=as.factor(plot))) + 
+ggplot(data=subset(soilmoisture1,drop!="drop"),aes(x=time_24hr, y=water_content,color=as.factor(plot))) + 
   geom_line()+
   scale_x_datetime(date_labels= "%Y-%m-%d %HH:%MM:%SS")+
   facet_wrap(~site)
+
+#Easier to look at date in this format 
+ggplot(data=subset(soilmoisture1,water_content > 0.1),aes(x=time_24hr, y=water_content,color=as.factor(plot))) + 
+  geom_line()+
+  facet_wrap(~site)+
+  ylab('Water Content') + xlab('Date')+
+  ggtitle("beanDIP 2020 Soil Moisture Data")+
+  guides(col=guide_legend("Plot"))
 
 #Below is how to make a graph that shows just one plot at one site 
 
