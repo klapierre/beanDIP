@@ -1,5 +1,5 @@
 
-setwd("C:/Users/Sarah Alley/Dropbox (Smithsonian)/bean_dip_2018-2024/lab work/Sanger Sequencing/sequence data/all_samples_consolidated/all_nifH_as_of_12_2022")
+setwd("C:/Users/Sarah Alley/Dropbox (Smithsonian)/bean_dip_2018-2024/lab work/Sanger Sequencing/sequence data/consensus_mothur_consolidated/OTUs")
 
 OTUs<-read.csv("12292022_OTUs.csv")
 
@@ -82,3 +82,73 @@ plot(species_accumulation_PopHill)
 #Finish prepping for sequencing and send off ones I have already done in the fridge
 #Let the group know details of the results 
 
+#02/03/2023, repeating analyses with all 599 (or 598?) samples we have sequences for 
+
+
+
+
+
+
+
+
+
+#In short form, not all the OTUs show up along the top, but works when converted to long form in next step 
+OTUs2<-read.csv("OTUs_01312023.csv")
+
+cleanOTUs2<-OTUs2%>%pivot_longer(!OTU, names_to="delete", values_to="sample")%>%
+  select(-delete)%>%
+  filter(sample!="")%>%
+  separate(col=sample, into=c("plant", "nodule"), sep="-")%>%
+  separate(col=plant, into=c("site_plot", "drought"), sep="(?<=\\d)(?=[a-z]?)")%>%
+  mutate(plot=readr::parse_number(site_plot), site=str_remove(site_plot, "\\d+"))%>%
+  select(-site_plot)%>%
+  mutate(drt_trt=ifelse(drought%in%c("a", "b", "c", "d", "e", "f", "g", "h", "i"),"ambient", "drought"))%>%
+  mutate(id=paste(site, plot, drought, nodule, sep="_"))
+
+#Between this step and the last step, 4 observations are lost... 
+widecleanOTUs2 <-cleanOTUs2%>%
+  mutate(presence=1)%>%
+  pivot_wider(names_from=OTU, values_from=presence, values_fill=0)
+
+species_accumulation2<- specaccum(widecleanOTUs2[, 7:188])
+
+plot(species_accumulation2)
+
+#Ambient samples
+
+ambientcleanOTUs2 <-filter(widecleanOTUs2, drt_trt == "ambient")
+species_accumulation_ambient2<- specaccum(ambientcleanOTUs2[, 7:188], method="collector")
+plot(species_accumulation_ambient2)
+
+#*Have reached a plateau with ambient samples!341 samples are ambient  
+
+#Droughted samples 
+
+droughtedcleanOTUs2 <-filter(widecleanOTUs2, drt_trt == "drought")
+species_accumulation_droughted2<- specaccum(droughtedcleanOTUs2[, 7:188])
+plot(species_accumulation_droughted2)
+
+#Clarksville samples
+
+CvillecleanOTUs2 <-filter(widecleanOTUs2, site == "C")
+
+species_accumulation_Cville2<- specaccum(CvillecleanOTUs2[, 7:188], method="collector")
+plot(species_accumulation_Cville2)
+
+#Keedysville samples 
+
+KvillecleanOTUs2 <-filter(widecleanOTUs2, site == "K")
+species_accumulation_Kville2<- specaccum(KvillecleanOTUs2[, 7:188])
+plot(species_accumulation_Kville2)
+
+#Wye samples
+
+WyecleanOTUs2 <-filter(widecleanOTUs2, site == "W")
+species_accumulation_Wye2<- specaccum(WyecleanOTUs2[, 7:188])
+plot(species_accumulation_Wye2)
+
+#Poplar Hill samples
+
+PopHillcleanOTUs2 <-filter(widecleanOTUs2, site == "P")
+species_accumulation_PopHill2<- specaccum(PopHillcleanOTUs2[, 7:188])
+plot(species_accumulation_PopHill2)
