@@ -113,7 +113,9 @@ widecleanOTUs2 <-cleanOTUs2%>%
 
 #Ask Kim what the 7:188 means 
 species_accumulation2<- specaccum(widecleanOTUs2[, 7:188])
+plot(species_accumulation2)
 
+species_accumulation2<- specaccum(widecleanOTUs2[, 7:188], method = "collector")
 plot(species_accumulation2)
 
 #Ambient samples
@@ -126,12 +128,19 @@ ambientcleanOTUs2 <- subset(widecleanOTUs2, drt_trt == "ambient")
 species_accumulation_ambient2<- specaccum(ambientcleanOTUs2[, 7:188], method="collector")
 plot(species_accumulation_ambient2)
 
+species_accumulation_ambient2<- specaccum(ambientcleanOTUs2[, 7:188])
+plot(species_accumulation_ambient2)
+
 #*Have reached a plateau with ambient samples!341 samples are ambient  
 
 #Droughted samples 
 #R reports the correct number of samples for drought
 
+#Collector method
 droughtedcleanOTUs2 <-subset(widecleanOTUs2, drt_trt == "drought")
+species_accumulation_droughted2<- specaccum(droughtedcleanOTUs2[, 7:188], method="collector")
+plot(species_accumulation_droughted2)
+
 species_accumulation_droughted2<- specaccum(droughtedcleanOTUs2[, 7:188])
 plot(species_accumulation_droughted2)
 
@@ -146,58 +155,70 @@ CvillecleanOTUs2 <- widecleanOTUs2 %>% filter(site %in% c("C", " C"))
 species_accumulation_Cville2<- specaccum(CvillecleanOTUs2[, 7:188], method="collector")
 plot(species_accumulation_Cville2)
 
+CvillecleanOTUs2 <- widecleanOTUs2 %>% filter(site %in% c("C", " C"))
+species_accumulation_Cville2<- specaccum(CvillecleanOTUs2[, 7:188])
+plot(species_accumulation_Cville2)
+
 #Clarksville ambient 
 ambientCvillecleanOTUs2 <- widecleanOTUs2 %>% filter(site %in% c("C", " C") & drt_trt == "ambient")
 ambient_species_accumulation_Cville2<- specaccum(ambientCvillecleanOTUs2[, 7:188], method="collector")
 plot(ambient_species_accumulation_Cville2)
 
+ambientCvillecleanOTUs2 <- widecleanOTUs2 %>% filter(site %in% c("C", " C") & drt_trt == "ambient")
+ambient_species_accumulation_Cville2<- specaccum(ambientCvillecleanOTUs2[, 7:188])
+plot(ambient_species_accumulation_Cville2)
+
 #Clarksville droughted
 droughtedCvillecleanOTUs2 <- widecleanOTUs2 %>% filter(site %in% c("C", " C") & drt_trt == "drought")
-drought_species_accumulation_Cville2<- specaccum(ambientCvillecleanOTUs2[, 7:188], method="collector")
+drought_species_accumulation_Cville2<- specaccum(droughtedCvillecleanOTUs2[, 7:188], method="collector")
+plot(drought_species_accumulation_Cville2)
+
+droughtedCvillecleanOTUs2 <- widecleanOTUs2 %>% filter(site %in% c("C", " C") & drt_trt == "drought")
+drought_species_accumulation_Cville2<- specaccum(droughtedCvillecleanOTUs2[, 7:188])
 plot(drought_species_accumulation_Cville2)
 
 #Keedysville samples 
 KvillecleanOTUs2 <- widecleanOTUs2 %>% filter(site %in% c("K", " K"))
-species_accumulation_Kville2<- specaccum(KvillecleanOTUs2[, 7:188])
+species_accumulation_Kville2<- specaccum(KvillecleanOTUs2[, 7:188], method="collector")
 plot(species_accumulation_Kville2)
 
 #Keedysville ambient 
 ambientKvillecleanOTUs2 <- widecleanOTUs2 %>% filter(site %in% c("K", " K") & drt_trt == "ambient")
-ambient_species_accumulation_Kville2<- specaccum(ambientKvillecleanOTUs2[, 7:188])
+ambient_species_accumulation_Kville2<- specaccum(ambientKvillecleanOTUs2[, 7:188], method="collector")
 plot(ambient_species_accumulation_Kville2)
 
 #Keedysville droughted
 droughtKvillecleanOTUs2 <- widecleanOTUs2 %>% filter(site %in% c("K", " K", "K ") & drt_trt == "drought")
-drought_species_accumulation_Kville2<- specaccum(droughtKvillecleanOTUs2[, 7:188])
+drought_species_accumulation_Kville2<- specaccum(droughtKvillecleanOTUs2[, 7:188], method="collector")
 plot(drought_species_accumulation_Kville2)
 
 #Wye samples
 
 WyecleanOTUs2 <-filter(widecleanOTUs2, site %in% c("W", " W", "W "))
-species_accumulation_Wye2<- specaccum(WyecleanOTUs2[, 7:188])
+species_accumulation_Wye2<- specaccum(WyecleanOTUs2[, 7:188], method="collector")
 plot(species_accumulation_Wye2)
 
 #Wye ambient 
 ambientWyecleanOTUs2 <-filter(widecleanOTUs2, site %in% c("W", " W", "W ") & drt_trt == "ambient")
-ambient_species_accumulation_Wye2<- specaccum(ambientWyecleanOTUs2[, 7:188])
+ambient_species_accumulation_Wye2<- specaccum(ambientWyecleanOTUs2[, 7:188], method="collector")
 plot(ambient_species_accumulation_Wye2)
 
 #Wye droughted
 droughtWyecleanOTUs2 <-filter(widecleanOTUs2, site %in% c("W", " W", "W ") & drt_trt == "drought")
-drought_species_accumulation_Wye2<- specaccum(droughtWyecleanOTUs2[, 7:188])
+drought_species_accumulation_Wye2<- specaccum(droughtWyecleanOTUs2[, 7:188], method="collector")
 plot(drought_species_accumulation_Wye2)
 
 #Poplar Hill samples
 PopHillcleanOTUs2 <-filter(widecleanOTUs2, site %in% c("P", " P", "P "))
-species_accumulation_PopHill2<- specaccum(PopHillcleanOTUs2[, 7:188])
+species_accumulation_PopHill2<- specaccum(PopHillcleanOTUs2[, 7:188], method="collector")
 plot(species_accumulation_PopHill2)
 
 #Poplar Hill ambient
 ambientPopHillcleanOTUs2 <-filter(widecleanOTUs2, site %in% c("P", " P", "P ")& drt_trt == "ambient")
-ambient_species_accumulation_PopHill2<- specaccum(ambientPopHillcleanOTUs2[, 7:188])
+ambient_species_accumulation_PopHill2<- specaccum(ambientPopHillcleanOTUs2[, 7:188], method="collector")
 plot(ambient_species_accumulation_PopHill2)
 
 #Poplar Hill droughted
 droughtPopHillcleanOTUs2 <-filter(widecleanOTUs2, site %in% c("P", " P", "P ")& drt_trt == "drought")
-drought_species_accumulation_PopHill2<- specaccum(droughtPopHillcleanOTUs2[, 7:188])
+drought_species_accumulation_PopHill2<- specaccum(droughtPopHillcleanOTUs2[, 7:188], method="collector")
 plot(drought_species_accumulation_PopHill2)
