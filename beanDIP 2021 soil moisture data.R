@@ -22,7 +22,7 @@ library(tidyverse)
 
 #Laptop
 
-setwd("C:/Users/Sarah Alley/Dropbox (Smithsonian)/Work Stuff/HOBOware/Soil Moisture 2021/Ready for R")
+setwd("C:/Users/Sarah Alley/Dropbox (Smithsonian)/bean_dip_2018-2024/field trials/data/raw_data/HOBO soil moisture and temperature data/Soil Moisture 2021/Ready for R")
 
 
 C19_1<-read.csv("Clarksville_19-1_forR.csv")%>%
