@@ -118,7 +118,10 @@ ggplot(data=subset(soilmoisture2022_better,water_content > 0.1),aes(x=time_24_da
   ggtitle("beanDIP 2022 Soil Moisture Data")+
   guides(col=guide_legend("Plot"))
 
-ggplot(data=soilmoisture2022_better,aes(x=time_24_date, y=water_content,color=as.factor(plot)) + 
+#This graph works (kinda)
+#Date doesn't appear on x-axis, and looks like too many measurements at a given time point?
+#Best I've been able to do, added the group = 1 statement 
+ggplot(data=soilmoisture2022_better,aes(x=time_24_date, y=water_content, group = 1, color=as.factor(plot))) + 
   geom_line()+
   facet_wrap(~site)+
   ylab('Water Content') + xlab('Date')+
