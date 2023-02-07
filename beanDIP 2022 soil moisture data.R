@@ -25,10 +25,9 @@ install.packages("chron")
 library(chron)
 
 #Laptop
-setwd("C:/Users/Sarah Alley/Dropbox (Smithsonian)/Work Stuff/HOBOware/Soil Moisture 2022/Soil moisture 2022 ready for R")
 
-#Work computer
-setwd("C:/Users/AlleyS/Dropbox (Smithsonian)/Work Stuff/HOBOware")
+
+setwd("C:/Users/Sarah Alley/Dropbox (Smithsonian)/bean_dip_2018-2024/field trials/data/raw_data/HOBO soil moisture and temperature data/Soil Moisture 2022/Soil Moisture 2022 ready for R")
 
 #Reading in data
 
@@ -79,6 +78,7 @@ W73_2<-read.csv("Wye_73_2_for_R.csv")%>%
   #unite(time_am_pm, c(date, time, am_pm), sep=" ") %>% 
   #mutate(time_24hr=as.Date(time_am_pm,"%m/%d/%Y %I:%M:%S %p"), origin = "2022-06-24")
 
+
 #This one works!!! Change the format of the time before pasting on to date! 
 
 soilmoisture2022_better <- C73_1%>%rbind(C73_2)%>%rbind(C73_3)%>%rbind(K73_1)%>%rbind(K73_2)%>%
@@ -102,6 +102,7 @@ ggplot(data=subset(soilmoisture2022_better,water_content > 0.1),aes(x=time_24_da
   ggtitle("beanDIP 2022 Soil Moisture Data")+
   guides(col=guide_legend("Plot"))
 
+
 ggplot(data=subset(soilmoisture2022_better,water_content > 0.1),aes(x=time_24_date, y=water_content,color=as.factor(plot))) + 
   geom_line()+
   facet_wrap(~site)+
@@ -110,8 +111,17 @@ ggplot(data=subset(soilmoisture2022_better,water_content > 0.1),aes(x=time_24_da
   ggtitle("beanDIP 2022 Soil Moisture Data")+
   guides(col=guide_legend("Plot"))
 
+ggplot(data=subset(soilmoisture2022_better,water_content > 0.1),aes(x=time_24_date, y=water_content,color=as.factor(plot))) + 
+  geom_line()+
+  facet_wrap(~site)+
+  ylab('Water Content') + xlab('Date')+
+  ggtitle("beanDIP 2022 Soil Moisture Data")+
+  guides(col=guide_legend("Plot"))
 
-
-
-
+ggplot(data=soilmoisture2022_better,aes(x=time_24_date, y=water_content,color=as.factor(plot)) + 
+  geom_line()+
+  facet_wrap(~site)+
+  ylab('Water Content') + xlab('Date')+
+  ggtitle("beanDIP 2022 Soil Moisture Data")+
+  guides(col=guide_legend("Plot"))
   
