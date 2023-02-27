@@ -1,7 +1,20 @@
+#######################################################################################
+##  combine_data.R: Takes individual metrics for each year, calculates more,
+##                  removes outliers (when necessary),
+##                  and saves the data into a single file for each year.
+##                  Then combines files for each year into a single one
+##                  with "long" format
+##
+##  Author: Kelsey McGurrin
+##
+#######################################################################################
+
 ####setup####
 library(tidyverse)
-setwd("~/Dropbox/bean_dip_2018-2024/field trials/data")
 site_key<-c("K", "C", "W", "PH")
+
+# working directory path (add yours if different)
+setwd("~/Dropbox/bean_dip_2018-2024/field trials/data")
 
 ####2019####
 #import data
@@ -92,7 +105,7 @@ dens<-read.csv("clean_data/clean_density_2021.csv")
 traits<-read.csv("clean_data/clean_traits_2021.csv")
 trial<-read.csv("clean_data/clean_trial_harvest_2021.csv")
 
-#remove outliers
+#remove outliers (none known)
 
 #create single table with trait and harvest data
 all<-left_join(harvest,traits,by=c("site", "variety","plot","indiv"))
@@ -108,7 +121,7 @@ all<-mutate(all,
             avg_trichomes=(trichomes_top+trichomes_bottom)/2,
             SLA=area_cm/dry_mass,
             leaf_dry_matter=dry_mass/wet_mass,
-            #nodules_per_g=nodule_count/root_biomass_g,
+            nodules_per_g=nodule_count/root_biomass_g,
             beans_per_g=beans_g/plant_biomass_g,
             plants_per_foot=final/4)
 
@@ -124,21 +137,18 @@ a<-read.csv("clean_data/clean_all_2019.csv")
 b<-read.csv("clean_data/clean_all_2020.csv")
 c<-read.csv("clean_data/clean_all_2021.csv")
 
-#select varieties from 2019 which were measured more than one year
 a$variety<-as.factor(a$variety)
-#a<-filter(a,variety %in% c("27","67","31","83"))
-#droplevels(a$variety)
 
 #add in brand names provided to Jason Wight
 a_brand_key <- c("27"="AG38X8","67"="AG38X8", "31"="S39-G2X", "83"="SH3814 LL",
                  "32"="S39XT68","55"="7390ET")
 a$brandline<-recode(a$variety, !!!a_brand_key)
-#droplevels(a$brandline)
 #add in groupings for treated or untreated seed coats
 a_treat_key <- c("27"="treated", "67"="untreated", "31"= "treated", "83"="treated"
                  ,"32"="treated","55"="treated")
 a$seed_treat<-recode(a$variety, !!!a_treat_key)
 a$brandline_seedcoat<-interaction(a$brandline,a$seed_treat)
+
 #clean up names and metrics
 a<-mutate(a,
           nodule_count=functional_nodules+scenesced_nodules,
@@ -217,7 +227,7 @@ c<-select(c,site,plot,indiv,
           row,
           pheno_stage,
           plant_biomass_g,beans_g,row_dens=initial,
-          #root_biomass_g,
+          root_biomass_g,
           nodule_count,stem_diameter_cm=root_collar_diameter_cm,
           wafer_count=wafer,discolored_count=purple,
           discolored_wrinkled_count=purple_wrinkled,
@@ -226,7 +236,7 @@ c<-select(c,site,plot,indiv,
           dry_leaf_g=dry_mass,
           leaf_toughness=avg_toughness,leaf_trichomes_count=avg_trichomes,
           SLA,leaf_dry_matter,
-          #nodules_per_g,
+          nodules_per_g,
           beans_per_g,
           humid_pct=Ambient.Humidity,temp_C=Ambient.Temperature,
           leaf_angle_deg=Leaf.Angle,
@@ -244,23 +254,7 @@ c<-add_column(c,.before="site",year=as.factor(2021))
 long<-bind_rows(a,b,c)
 write.csv(long,file="clean_data/clean_all_years_long.csv",row.names=F)
 
-#wide join data
-a<-select(a,-year)
-b<-select(b,-year)
-c<-select(c,-year)
 
-ab<-left_join(b,a,suffix=c(".20",".19"),by=
-                  c("site","plot","indiv","seed_treat","brandline",
-                    "brandline_seedcoat","row"))
-
-#paste ".21" onto end of all metrics before joining with other years
-colnames(c)[8:38] <- paste(colnames(c[8:38]),"21",sep = ".")
-
-wide<-left_join(c,ab,by=
-                   c("site","plot","indiv","seed_treat","brandline",
-                     "brandline_seedcoat","row"))
-
-write.csv(wide,file="clean_data/clean_all_years_wide.csv",row.names=F)
 
 
 

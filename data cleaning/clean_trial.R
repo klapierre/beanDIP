@@ -62,6 +62,10 @@ write.csv(data,file="clean_data/clean_trial_harvest_2020.csv",row.names = F)
 ####2021####
 data<-read_excel("raw_data/2021 SVT yields for Kelsey.xlsx")
 
+#have duplicate values for W 58-3 and CV 57-3
+# exclude ones with different maturity group
+data<-filter(data,Maturity=="3s")
+
 data<-data %>%
   filter(TEST=="FS") %>%
   select(variety=Entry,plot=Rep,trial_yield=bu_per_ac,site=LOCATION) 

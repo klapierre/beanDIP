@@ -124,6 +124,14 @@ datab$Individual[datab$ID==2247479]<-1
 datab$day<-parse_date_time(as.character(datab$time),"mdy_HM")
 datab$Site[date(datab$day)=="2021-08-18"]<-"Poplar Hill"
 
+#not sure why there are duplicate measurements for PH 19-3-6. both seem fine
+# remove measurement with higher PAR because most are 200-600
+datab<-filter(datab,datab$ID != 2255119)
+
+#duplicate measurements for W 59-2-6 and 57-2-6 is missing 
+# one at end of day was done after the rest of plot 57-2, so assume that is 57-2-6
+datab$Variety[datab$ID==2245384]<-57
+
 #output cleaned file
 write.csv(datab,file="clean_data/clean_photosynq_2021.csv",row.names = F)
 

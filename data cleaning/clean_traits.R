@@ -97,7 +97,6 @@ site_key <- c("keedysville" = "K","clarksville" = "C","wye"="W","poplar hill"= "
 traits$site<-recode(traits$site, !!!site_key)
 traits<-rename(traits,indiv=leaf,wet_mass=wet_mass_g,toughness_1=toughness1,toughness_2=toughness2,dry_mass=dry_mass_g)
 
-
 #add in clean photosynq data
 photosynq<-read_csv("clean_data/clean_photosynq_2021.csv")
 photosynq<-rename(photosynq,site=Site,variety=Variety,plot=Plot,indiv=Individual)
@@ -109,7 +108,6 @@ photosynq<-select(photosynq,Ambient.Humidity:Time.of.Day)
 all<-left_join(lwp,photosynq,by=c("site", "variety","plot","indiv"))
 all<-left_join(traits,all,by=c("site", "variety","plot","indiv"))
 
-#still has 2 extra rows?
 write.csv(all,file="clean_data/clean_traits_2021.csv",row.names = F)
 
 ####2022####
