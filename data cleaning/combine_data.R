@@ -173,7 +173,7 @@ dat_20<-read.csv("clean_data/clean_all_2020.csv")
 dat_21<-read.csv("clean_data/clean_all_2021.csv")
 dat_22<-read.csv("clean_data/clean_all_2022.csv")
 
-#add in brand names provided to Jason Wight
+#add in brand names provided to SVT
 dat_19$variety<-as.factor(dat_19$variety)
 dat_19_brand_key <- c("27"="AG38X8","67"="AG38X8", "31"="S39-G2X", "83"="SH3814 LL",
                  "32"="S39XT68","55"="7390ET")
@@ -284,9 +284,9 @@ dat_21<-select(dat_21,site,plot,indiv,
 
 #same details for 2022 data
 dat_22$variety<-as.factor(dat_22$variety)
-dat_22_brand_key <- c("19"="AG38X8","59"="AG38X8", "82"="S39-G2X", "57"="SH3814 LL", "58"="SH3814 LL")
+dat_22_brand_key <- c("73"="AG38X8")
 dat_22$brandline<-recode(dat_22$variety, !!!dat_22_brand_key)
-dat_22_treat_key <- c("59"="treated", "19"="untreated", "82"= "treated", "58"="treated", "57"="untreated")
+dat_22_treat_key <- c("73"="untreated")
 dat_22$seed_treat<-recode(dat_22$variety, !!!dat_22_treat_key)
 dat_22$brandline_seedcoat<-interaction(dat_22$brandline,dat_22$seed_treat)
 #also add in plot sizes
@@ -322,10 +322,11 @@ dat_22<-select(dat_22,site,plot,indiv,
 )
 
 #long join data
-a<-add_column(a,.before="site",year=as.factor(2019))
-b<-add_column(b,.before="site",year=as.factor(2020))
-c<-add_column(c,.before="site",year=as.factor(2021))
-long<-bind_rows(a,b,c)
+dat_19<-add_column(dat_19,.before="site",year=as.factor(2019))
+dat_20<-add_column(dat_20,.before="site",year=as.factor(2020))
+dat_21<-add_column(dat_21,.before="site",year=as.factor(2021))
+dat_22<-add_column(dat_22,.before="site",year=as.factor(2022))
+long<-bind_rows(a,b,c,d)
 write.csv(long,file="clean_data/clean_all_years_long.csv",row.names=F)
 
 
