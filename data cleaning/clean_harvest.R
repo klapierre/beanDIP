@@ -229,7 +229,7 @@ pheno<-read.csv("clean_data/clean_pheno_2022.csv")
 #select only harvest date
 pheno<-filter(pheno,sampling_round==4)
 harvest<-left_join(harvest,pheno,by=c("site", "variety", "plot", "indiv"))
-harvest<-select(harvest,-c(date,notes.x,notes.y,sampling_round))
+harvest<-select(harvest,-c(date,notes,sampling_round))
 
 #add in root biomass data
 roots<-read_excel("raw_data/beanDIP 2022 root biomass weight data.xlsx")
@@ -237,6 +237,11 @@ roots<-rename(roots,root_biomass_g=weight_g)
 #duplicate values for PH plot 1 indiv 1 - missing value for PH plot 3 indiv 1. based on other plant size values, 2.28 is plot 1 - 0.93 is plot 3
 roots$plot[roots$site=="PH" & roots$indiv==1 & roots$root_biomass_g == 0.9363]<-3
 harvest<-left_join(harvest,roots,by=c("site", "variety", "plot", "indiv"))
+
+#add in bean yield and counts
+beans<-read_csv("clean_data/clean_harvest_2022_beanweightandgrade.csv")
+beans<-select(beans,c(year,site,variety,plot,indiv,beans_g,wafer,purple,purple_wrinkled,wrinkled,healthy))
+harvest<-left_join(harvest,beans,by=c("year","site","variety","plot","indiv"))
 
 #output cleaned file, should have 72 rows total
 write.csv(harvest,file="clean_data/clean_harvest_2022.csv",row.names = F)
