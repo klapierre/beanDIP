@@ -71,12 +71,12 @@ data$site<-recode(data$site,"KV"="K","CV"="C","WYE"="W")
 write.csv(data,file="clean_data/clean_trial_harvest_2021.csv",row.names = F)
 
 ####2022####
-# data<-read_excel("raw_data/2022 SVT yields for Kelsey.xlsx")
-# 
-# data<-data %>%
-#   filter(TEST=="FS") %>%
-#   select(variety=Entry,plot=Rep,trial_yield=bu_per_ac,site=LOCATION) 
-# data$site<-recode(data$site,"KV"="K","CV"="C","WYE"="W")
-# 
-# #export
-# write.csv(data,file="clean_data/clean_trial_harvest_2022.csv",row.names = F)
+data<-read_excel("raw_data/SVT yields for Kelsey 2022.xlsx")
+
+data<-data %>%
+  filter(TEST=="FS") %>%
+  select(variety=Entry,plot=Rep,trial_yield=bu_per_ac,site=LOCATION)
+data$site<-recode(data$site,"KV"="K","CV"="C","WYE"="W")
+
+#export
+write.csv(data,file="clean_data/clean_trial_harvest_2022.csv",row.names = F)
