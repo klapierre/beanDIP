@@ -221,7 +221,9 @@ data<-select(data,-notes)
 nodules<-read_excel("raw_data/beanDIP 2022 nodule and root collar data.xlsx")
 # duplicate values for PH plot 3 indiv 4 - missing value for W plot 3 indiv 4. based on other plant size values, PH is collar 9.6 - W is 11.7
 nodules$site[nodules$plot==3 & nodules$indiv==4 & nodules$root_collar_diameter_mm == 11.7]<-"W"
-nodules<-select(nodules,-c(notes,harvest_date))
+# root collar should be in cm, not mm
+nodules<-mutate(nodules, root_collar_diameter_cm = as.numeric(root_collar_diameter_mm)/10)
+nodules<-select(nodules,-c(notes,harvest_date,root_collar_diameter_mm))
 harvest<-left_join(data,nodules,by=c("site", "variety", "plot", "indiv"))
 
 #add in pheno stage at harvest so we can group by it

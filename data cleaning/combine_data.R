@@ -177,7 +177,7 @@ dat_22<-read.csv("clean_data/clean_all_2022.csv")
 dat_19$variety<-as.factor(dat_19$variety)
 dat_19_brand_key <- c("27"="AG38X8","67"="AG38X8", "31"="S39-G2X", "83"="SH3814 LL",
                  "32"="S39XT68","55"="7390ET")
-dat_19$brandline<-recode(dat_19$variety, !!!a_brand_key)
+dat_19$brandline<-recode(dat_19$variety, !!!dat_19_brand_key)
 #add in groupings for treated or untreated seed coats
 dat_19_treat_key <- c("27"="treated", "67"="untreated", "31"= "treated", "83"="treated"
                  ,"32"="treated","55"="treated")
@@ -326,7 +326,7 @@ dat_19<-add_column(dat_19,.before="site",year=as.factor(2019))
 dat_20<-add_column(dat_20,.before="site",year=as.factor(2020))
 dat_21<-add_column(dat_21,.before="site",year=as.factor(2021))
 dat_22<-add_column(dat_22,.before="site",year=as.factor(2022))
-long<-bind_rows(a,b,c,d)
+long<-bind_rows(dat_19,dat_20,dat_21,dat_22)
 write.csv(long,file="clean_data/clean_all_years_long.csv",row.names=F)
 
 
