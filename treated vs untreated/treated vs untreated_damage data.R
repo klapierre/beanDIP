@@ -45,4 +45,5 @@ damage <- rbind(damage2019, damage2020, damage2021, damage2022) %>% #bind all da
   summarise_at(vars('density', 'chew_pct', 'pct_leaves_stippled', 'pct_damage_stippled', 'pct_yellow_leaf', 'pct_pucker'), funs(mean), na.rm=T) %>% 
   ungroup()
 
-ggplot(data=)
+ggplot(data=damage, aes(x=sampling.round, y=chew_pct, group=interaction(site,year))) +
+  geom_point()
