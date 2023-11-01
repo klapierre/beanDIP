@@ -8,12 +8,13 @@
 library(codyn)
 library(nlme)
 library(emmeans)
+library(GLMMadaptive)
 library(performance)
 library(tidyverse)
 
 
 setwd("C:\\Users\\kjkomatsu\\Dropbox (Smithsonian)\\bean_dip_2018-2024\\field trials\\data\\raw_data") #Kim's path
-setwd("~/Dropbox (Smithsonian)/bean_dip_2018-2024/field trials/data/raw_data") #Karin's path
+# setwd("~/Dropbox (Smithsonian)/bean_dip_2018-2024/field trials/data/raw_data") #Karin's path
 
 
 theme_set(theme_bw())
@@ -76,36 +77,123 @@ insects <- read.csv('beanDIP_insectdata_allyears_kjk.csv') %>%
 #   unique()
 
 #### Check functional group count normality ####
-with(subset(insects, functional_group=='chewing'), hist((count)))
+with(subset(insects, functional_group=='chewing'), hist(((count))))
 with(subset(insects, functional_group=='sucking'), hist((count)))
-with(subset(insects, functional_group=='multiple'), hist((count))) #just ants
+with(subset(insects, functional_group=='multiple'), hist((count))) #just ants #too few to do stats
 with(subset(insects, functional_group=='pollinator'), hist((count)))
 with(subset(insects, functional_group=='predator'), hist((count)))
-with(subset(insects, functional_group=='detritivore'), hist((count)))
+with(subset(insects, functional_group=='detritivore'), hist((count))) #too few to do stats
 with(subset(insects, functional_group=='borer'), hist((count))) #too few to do stats
 with(subset(insects, functional_group=='seed'), hist((count))) #too few to do stats
 with(subset(insects, functional_group=='other'), hist((count))) #too few to do stats
 with(subset(insects, functional_group=='unknown'), hist((count))) #too few to do stats
 
 
-#### ANOVA fuctional group responses to seed coats ####
+#### ANOVA functional group responses to seed coats ####
 
 #chewing herbivores
-summary(chewingModel <- lme(count ~ year*sampling_round*site*treatment_agg,
-                            data=subset(insects, functional_group=='chewing'),
-                            random=~1|plot,
-                            weights=varExp(),
-                            correlation=corCompSymm(form=~year/sampling_round|plot),
+summary(chewingModel <- lme(count ~ treatment_agg,
+                            data=subset(insects, functional_group=='chewing' & year!=2022 & treatment %in% c('untreated_focal', 'treated_focal') & sampling_round==4),
+                            random=~1|site/row/plot,
+                            weights=varIdent(),
+                            correlation=corCompSymm(form=~year/sampling_round|site/row/plot),
                             control=lmeControl(returnObject=T)))
 anova.lme(chewingModel, type='sequential') 
-emmeans(chewingModel, pairwise~year*treatment_agg, adjust="tukey") 
+emmeans(chewingModel, ~treatment_agg, adjust="tukey") 
+
+# #zero-inflated - chewing herbivores
+# summary(chewingModel <- mixed_model(count ~ treatment_agg,
+#                                     data=subset(insects, functional_group=='chewing' & year!=2022 & treatment %in% c('untreated_focal', 'treated_focal')),
+#                                     random=~1|site/row/plot,
+#                                     family=zi.poisson(),
+#                                     zi_fixed=~treatment_agg #,
+#                                     # correlation=corCompSymm(form=~year/sampling_round|site/row/plot),
+#                                     # control=lmeControl(returnObject=T)
+#         ))
+# anova.lme(chewingModel, type='sequential') 
+# emmeans(chewingModel, ~treatment_agg, adjust="tukey") 
+
 
 #sucking herbivores
-summary(suckingModel <- lme(count ~ year*sampling_round*site*treatment_agg,
-                            data=subset(insects, functional_group=='sucking'),
-                            random=~1|plot,
-                            weights=varExp(),
-                            correlation=corCompSymm(form=~year/sampling_round|plot),
+summary(suckingModel <- lme(count ~ treatment_agg,
+                            data=subset(insects, functional_group=='sucking' & year!=2022 & treatment %in% c('untreated_focal', 'treated_focal')),
+                            random=~1|site/row/plot,
+                            weights=varIdent(),
+                            correlation=corCompSymm(form=~year/sampling_round|site/row/plot),
                             control=lmeControl(returnObject=T)))
-anova.lme(suckingModel, type='sequential') 
-emmeans(suckingModel, pairwise~year*treatment_agg, adjust="tukey") 
+anova.lme(suckingModel, type='sequential') #marginal more in untreated
+emmeans(suckingModel, ~treatment_agg, adjust="tukey") 
+
+
+#all herbivores
+summary(herbivoreModel <- lme(count ~ treatment_agg,
+                              data=subset(insects, functional_group %in% c('sucking', 'chewing') & year!=2022 & treatment %in% c('untreated_focal', 'treated_focal')),
+                              random=~1|site/row/plot,
+                              weights=varIdent(),
+                              correlation=corCompSymm(form=~year/sampling_round|site/row/plot),
+                              control=lmeControl(returnObject=T)))
+anova.lme(herbivoreModel, type='sequential')
+emmeans(herbivoreModel, ~treatment_agg, adjust="tukey") 
+
+
+#pollinators
+summary(pollinatorModel <- lme(count ~ treatment_agg,
+                               data=subset(insects, functional_group=='pollinator' & year!=2022 & treatment %in% c('untreated_focal', 'treated_focal')),
+                               random=~1|site/row/plot,
+                               weights=varIdent(),
+                               correlation=corCompSymm(form=~year/sampling_round|site/row/plot),
+                               control=lmeControl(returnObject=T)))
+anova.lme(pollinatorModel, type='sequential')
+emmeans(pollinatorModel, ~treatment_agg, adjust="tukey") 
+
+
+#predators
+summary(predatorModel <- lme(count ~ treatment_agg,
+                               data=subset(insects, functional_group=='predator' & year!=2022 & treatment %in% c('treated_focal','untreated_focal')),
+                               random=~1|site/row/plot,
+                               weights=varIdent(),
+                               correlation=corCompSymm(form=~year/sampling_round|site/row/plot),
+                               control=lmeControl(returnObject=T)))
+anova.lme(predatorModel, type='sequential') 
+emmeans(predatorModel, ~treatment_agg, adjust="tukey") 
+
+
+
+#### Figures ####
+#interactions
+ggplot(data=subset(insects, functional_group %!in% c('borer', 'seed', 'detritivore', 'multiple', 'other', 'none', 'unknown') & treatment %in% c('treated_focal','untreated_focal')
+                   & site=='C' & year!=2022),
+       aes(x=sampling_round, y=count, color=treatment)) +
+  geom_point() +
+  geom_smooth(method='lm', se=F) +
+  facet_grid(rows=vars(functional_group), cols=vars(year), scales='free_y')
+
+ggplot(data=subset(insects, functional_group %!in% c('borer', 'seed', 'detritivore', 'multiple', 'other', 'none', 'unknown') & treatment %in% c('treated_focal','untreated_focal')
+                   & site=='K' & year!=2022),
+       aes(x=sampling_round, y=count, color=treatment)) +
+  geom_point() +
+  geom_smooth(method='lm', se=F) +
+  facet_grid(rows=vars(functional_group), cols=vars(year), scales='free_y')
+
+ggplot(data=subset(insects, functional_group %!in% c('borer', 'seed', 'detritivore', 'multiple', 'other', 'none', 'unknown') & treatment %in% c('treated_focal','untreated_focal')
+                   & site=='W' & year!=2022),
+       aes(x=sampling_round, y=count, color=treatment)) +
+  geom_point() +
+  geom_smooth(method='lm', se=F) +
+  facet_grid(rows=vars(functional_group), cols=vars(year), scales='free_y')
+
+ggplot(data=subset(insects, functional_group %!in% c('borer', 'seed', 'detritivore', 'multiple', 'other', 'none', 'unknown') & treatment %in% c('treated_focal','untreated_focal')
+                   & site=='PH' & year!=2022),
+       aes(x=sampling_round, y=count, color=treatment)) +
+  geom_point() +
+  geom_smooth(method='lm', se=F) +
+  facet_grid(rows=vars(functional_group), cols=vars(year), scales='free_y')
+
+
+#no interactions
+ggplot(data=barGraphStats(data=subset(insects, functional_group %!in% c('borer', 'seed', 'other', 'none', 'unknown') & treatment %in% c('treated_focal','untreated_focal') & year!=2022), 
+                          variable="count", byFactorNames=c("functional_group", "treatment")),
+       aes(x=treatment, y=mean, fill=treatment)) +
+  geom_bar(stat='identity', position=position_dodge(0.9)) +
+  geom_errorbar(aes(ymin=mean-se, ymax=mean+se), width=0.2, position=position_dodge(0.9)) +
+  facet_wrap(~functional_group, scales='free')
