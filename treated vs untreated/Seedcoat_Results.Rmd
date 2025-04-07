@@ -1,0 +1,301 @@
+---
+title: "Seedcoat Results"
+author: "Kelsey McGurrin"
+date: "`r Sys.Date()`"
+output: 
+  html_document:
+    toc: true
+    toc_float: true
+---
+
+```{r include=FALSE}
+knitr::opts_chunk$set(echo = FALSE,warning = FALSE,include = TRUE,message = FALSE)
+
+#### setup ####
+#packages
+library(tidyverse)
+library(lme4)
+library(lmerTest)
+
+#set wd
+#setwd('C:\\Users\\kjkomatsu\\Dropbox (Smithsonian)\\bean_dip_2018-2024\\field trials\\data\\clean_data') # Kim path
+setwd('~/Dropbox/bean_dip_2018-2024/field trials/data/clean_data') # Kelsey path
+
+#### import damage data ####
+damage2019 <- read.csv('clean_damage_2019.csv') %>% 
+  mutate(pct_pucker='NA', year=2019)
+damage2020 <- read.csv('clean_damage_2020.csv') %>% 
+  mutate(pct_pucker='NA', year=2020)
+damage2021 <- read.csv('clean_damage_2021.csv') %>% 
+  mutate(year=2021)
+# damage2022 <- read.csv('clean_damage_2022.csv') %>% # don't include 2022 because we only have data for untreated
+#   select(-...18, -plot_id) %>% 
+#   mutate(pct_pucker='NA', year=2022) %>% 
+#   rename(pct_damage_stippled=stip_pct)
+
+damage <- rbind(damage2019, damage2020, damage2021) %>% #bind all data together
+  # put in the real variety names and whether treated or untreated
+  mutate(variety_name=ifelse(year==2019 & variety %in% c(67,27), 'AG38X8',
+                             ifelse(year==2020 & variety %in% c(2,5), 'AG38X8',
+                                    ifelse(year==2021 & variety %in% c(19,59), 'AG38X8',
+                                           ifelse(year==2022 & variety %in% c(73), 'AG38X8',
+          ifelse(year==2019 & variety==83, 'SH3814LL',
+                 ifelse(year==2020 & variety==50, 'SH3814LL',
+                        ifelse(year==2021 & variety %in% c(57,58), 'SH3814LL',
+          ifelse(year==2019 & variety==31, 'S39-G2X',
+                 ifelse(year==2020 & variety==70, 'S39-G2X',
+                        ifelse(year==2021 & variety==82, 'S39-G2X',
+          ifelse(year==2019 & variety==55, '7390ET',
+          ifelse(year==2019 & variety==32, '539XT', 'NA'))))))))))))) %>% 
+  mutate(seed_coat=ifelse(year==2019 & variety==67, 'untrt',
+                          ifelse(year==2020 & variety==2, 'untrt',
+                                 ifelse(year==2021 & variety %in% c(19,57), 'untrt',
+                                        ifelse(year==2022 & variety==73, 'untrt', 'trt'))))) %>% 
+  filter(variety_name=="AG38X8" & year== c(2019,2020,2021) # only varieties and years where we have both treated/untreated
+         | variety_name=="SH3814LL" & year== 2021) %>%
+  mutate(stip_pct=(pct_leaves_stippled*as.numeric(pct_damage_stippled))/100,.after=chew_pct,.keep="unused") %>% #calculate stippling
+  select(-c(density,mammals,insects,insect.names,pct_pucker)) %>% # drop unnecessary columns
+  group_by(year, sampling.round, site, variety_name, seed_coat, plot) %>% # average rows a and b to get one value per plot
+  summarise(across(chew_pct:pct_yellow_leaf, ~ mean(.x, na.rm = TRUE))) %>%
+  ungroup()
+
+# so sites display properly from west to east
+damage$site<-factor(damage$site, levels = c("K", "C", "W", "PH"))
+
+
+#### import biomass data ####
+
+# open clean data file 
+# filter so only varieties/years where we have a treated/untreated comparison
+biomass<-read_csv("clean_all_years_long.csv") %>%
+  filter(brandline=="AG38X8" & year== c(2019,2020,2021) 
+         | brandline=="SH3814 LL" & year== 2021) %>%
+  select(year:plot_yield_buac)
+
+# so sites display properly from west to east
+biomass$site<-factor(biomass$site, levels = c("K", "C", "W", "PH"))
+
+```
+
+# AG38X8 only
+## Chewing Damage
+```{r echo=FALSE}
+# subset data for analysis
+AG_damage<-damage %>%
+  filter(variety_name=="AG38X8")
+
+# summary table for graphs
+AG_damage_siteAvgDf<-damage %>%
+  filter(variety_name=="AG38X8") %>%
+  group_by(sampling.round,site,year,seed_coat) %>%
+  summarise(site_avg_chew=mean(chew_pct,na.rm=T),
+            se_avg_chew=sd(chew_pct,na.rm = T)/sqrt(n()),
+            site_avg_stip=mean(stip_pct,na.rm=T),
+            se_avg_stip=sd(stip_pct,na.rm=T)/sqrt(n()))
+
+# percent chew panels
+ggplot(AG_damage_siteAvgDf, aes(x=sampling.round,y=site_avg_chew,colour=seed_coat,group=seed_coat))+
+  facet_grid(rows=vars(year),cols=vars(site))+geom_point()+geom_line()+
+  geom_errorbar(aes(ymin=site_avg_chew-se_avg_chew,
+                    ymax=site_avg_chew+se_avg_chew),width=0.2)+
+  labs(title="AG38X8",y="Avg % Chew ± SE")
+```
+
+```{r echo=TRUE}
+AG_chew_mod<-lmer(chew_pct~year*sampling.round*seed_coat+(1|site/variety_name),data=AG_damage)
+
+anova(AG_chew_mod)
+summary(AG_chew_mod)
+plot(AG_chew_mod)
+hist(residuals(AG_chew_mod))
+```
+
+## Stippling Damage
+```{r echo=FALSE}
+# percent stippling panels
+ggplot(AG_damage_siteAvgDf, aes(x=sampling.round,y=site_avg_stip,colour=seed_coat,group=seed_coat))+
+  facet_grid(rows=vars(year),cols=vars(site))+geom_point()+geom_line()+
+  geom_errorbar(aes(ymin=site_avg_stip-se_avg_stip,
+                    ymax=site_avg_stip+se_avg_stip),width=0.2)+
+  labs(title="AG38X8",y="Avg % Stippling ± SE")
+```
+
+```{r echo=TRUE}
+AG_stip_mod<-lmer(stip_pct~year*sampling.round*seed_coat+(1|site/variety_name),data=AG_damage)
+
+anova(AG_stip_mod)
+summary(AG_stip_mod)
+plot(AG_stip_mod)
+hist(residuals(AG_stip_mod))
+```
+
+## Plant Biomass
+```{r echo=FALSE}
+# subset data for analysis
+AG_biomass<-biomass %>%
+  filter(brandline=="AG38X8")
+
+# summary table for graphs
+AG_biomass_siteAvgDf<-biomass %>%
+  filter(brandline=="AG38X8") %>%
+  group_by(site,year,brandline,seed_treat) %>%
+  summarise(site_avg_plant_biomass=mean(plant_biomass_g,na.rm=T),
+            se_plant_biomass=sd(plant_biomass_g,na.rm = T)/sqrt(n()),
+            site_avg_beans=mean(beans_g,na.rm=T),
+            se_beans=sd(beans_g,na.rm = T)/sqrt(n()),
+            site_avg_yield=mean(plot_yield_buac,na.rm=T),
+            se_yield=sd(plot_yield_buac,na.rm = T)/sqrt(n()))
+
+# plant biomass panels
+ggplot(AG_biomass_siteAvgDf,aes(x=site,y=site_avg_plant_biomass,group=seed_treat,color=seed_treat))+
+         geom_line(size=1.5)+
+         geom_point()+
+         geom_errorbar(aes(ymin=site_avg_plant_biomass-se_plant_biomass,
+                           ymax=site_avg_plant_biomass+se_plant_biomass),width=0.2,size=1.5)+
+         facet_wrap(~year,nrow=1)+
+  labs(title="AG38X8",y="Avg Whole Plant Biomass (g) ± SE")
+```
+
+```{r echo=TRUE}
+AG_biomass_mod<-lmer(plant_biomass_g~year*seed_treat+(1|site/brandline),data=AG_biomass)
+
+anova(AG_biomass_mod)
+summary(AG_biomass_mod)
+plot(AG_biomass_mod)
+hist(residuals(AG_biomass_mod))
+```
+
+## Trial Yield
+```{r echo=FALSE}
+# trial yield panels
+ggplot(AG_biomass_siteAvgDf,aes(x=site,y=site_avg_yield,group=seed_treat,color=seed_treat))+
+         geom_line(size=1.5)+
+         geom_point()+
+         geom_errorbar(aes(ymin=site_avg_yield-se_yield,
+                           ymax=site_avg_yield+se_yield),width=0.2,size=1.5)+
+         facet_wrap(~year,nrow=1)+
+  labs(title="AG38X8",y="Avg Plot Yield (bu/ac) +/- SE")
+```
+
+```{r echo=TRUE}
+AG_yield_mod<-lmer(plot_yield_buac~year*seed_treat+(1|site/brandline),data=AG_biomass)
+
+anova(AG_yield_mod)
+summary(AG_yield_mod)
+plot(AG_yield_mod)
+hist(residuals(AG_yield_mod))
+```
+
+
+
+
+# SH3814LL only
+Note: Keedysville herbicide damage - skipped survey sampling.round 3, round 4 only measured surviving stalks. Mean density went from ~ 16 stems to ~ 6 stems
+
+## Chewing Damage
+```{r  echo=FALSE}
+# subset data for analysis
+SH_damage<-damage %>%
+  filter(variety_name=="SH3814LL")
+
+# summary table for graphs
+SH_siteAvgDf<-damage %>%
+  filter(variety_name=="SH3814LL") %>%
+  group_by(sampling.round,site,seed_coat) %>%
+  summarise(site_avg_chew=mean(chew_pct,na.rm=T),
+            se_avg_chew=sd(chew_pct,na.rm = T)/sqrt(n()),
+            site_avg_stip=mean(stip_pct,na.rm=T),
+            se_avg_stip=sd(stip_pct,na.rm=T)/sqrt(n()))
+
+# percent chew panels
+ggplot(SH_siteAvgDf, aes(x=sampling.round,y=site_avg_chew,colour=seed_coat,group=seed_coat))+
+  facet_wrap(~site,nrow=1)+geom_point()+geom_line()+
+  geom_errorbar(aes(ymin=site_avg_chew-se_avg_chew,
+                    ymax=site_avg_chew+se_avg_chew),width=0.2)+
+  labs(title="SH3814LL",y="Avg % Chew ± SE")
+```
+
+```{r echo=TRUE}
+SH_chew_mod<-lmer(chew_pct~year*sampling.round*seed_coat+(1|site/variety_name),data=SH_damage)
+
+anova(SH_chew_mod)
+summary(SH_chew_mod)
+plot(SH_chew_mod)
+hist(residuals(SH_chew_mod))
+```
+
+## Stippling Damage
+```{r echo=FALSE}
+# percent stippling panels
+ggplot(SH_siteAvgDf, aes(x=sampling.round,y=site_avg_stip,colour=seed_coat,group=seed_coat))+
+  facet_wrap(~site,nrow=1)+geom_point()+geom_line()+
+  geom_errorbar(aes(ymin=site_avg_stip-se_avg_stip,
+                    ymax=site_avg_stip+se_avg_stip),width=0.2)+
+  labs(title="SH3814LL",y="Avg % Stippling ± SE")
+```
+
+```{r echo=TRUE}
+SH_stip_mod<-lmer(stip_pct~year*sampling.round*seed_coat+(1|site/variety_name),data=SH_damage)
+
+anova(SH_stip_mod)
+summary(SH_stip_mod)
+plot(SH_stip_mod)
+hist(residuals(SH_stip_mod))
+```
+
+## Plant Biomass
+```{r echo=FALSE}
+# subset data for analysis
+SH_biomass<-biomass %>%
+  filter(brandline=="SH3814 LL")
+
+# summary table for graphs
+SH_biomass_siteAvgDf<-biomass %>%
+  filter(brandline=="SH3814 LL") %>%
+  group_by(site,year,brandline,seed_treat) %>%
+  summarise(site_avg_plant_biomass=mean(plant_biomass_g,na.rm=T),
+            se_plant_biomass=sd(plant_biomass_g,na.rm = T)/sqrt(n()),
+            site_avg_beans=mean(beans_g,na.rm=T),
+            se_beans=sd(beans_g,na.rm = T)/sqrt(n()),
+            site_avg_yield=mean(plot_yield_buac,na.rm=T),
+            se_yield=sd(plot_yield_buac,na.rm = T)/sqrt(n()))
+
+# plant biomass panels
+ggplot(SH_biomass_siteAvgDf,aes(x=site,y=site_avg_plant_biomass,group=seed_treat,color=seed_treat))+
+         geom_line(size=1.5)+
+         geom_point()+
+         geom_errorbar(aes(ymin=site_avg_plant_biomass-se_plant_biomass,
+                           ymax=site_avg_plant_biomass+se_plant_biomass),width=0.2,size=1.5)+
+         facet_wrap(~year,nrow=1)+
+  labs(title="SH3814 LL",y="Avg Whole Plant Biomass (g) +/- SE")
+```
+
+```{r echo=TRUE}
+SH_biomass_mod<-lmer(plant_biomass_g~year*seed_treat+(1|site/brandline),data=SH_biomass)
+
+anova(SH_biomass_mod)
+summary(SH_biomass_mod)
+plot(SH_biomass_mod)
+hist(residuals(SH_biomass_mod))
+```
+
+## Trial Yield
+```{r echo=FALSE}
+# trial yield panels
+ggplot(SH_biomass_siteAvgDf,aes(x=site,y=site_avg_yield,group=seed_treat,color=seed_treat))+
+         geom_line(size=1.5)+
+         geom_point()+
+         geom_errorbar(aes(ymin=site_avg_yield-se_yield,
+                           ymax=site_avg_yield+se_yield),width=0.2,size=1.5)+
+         facet_wrap(~year,nrow=1)+
+  labs(title="SH3814 LL",y="Avg Plot Yield (bu/ac) +/- SE")
+```
+
+```{r echo=TRUE}
+SH_yield_mod<-lmer(plot_yield_buac~year*seed_treat+(1|site/brandline),data=SH_biomass)
+
+anova(SH_yield_mod)
+summary(SH_yield_mod)
+plot(SH_yield_mod)
+hist(residuals(SH_yield_mod))
+```
