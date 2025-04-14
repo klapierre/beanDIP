@@ -1,0 +1,1468 @@
+---
+title: "RandallBrendan_FE_RhizobiaStrainIdentity_code"
+author: "Brendan Randall"
+date: "2025-04-14"
+output: word_document
+---
+
+```{r setup, include=FALSE}
+```
+
+
+
+```{r load libraries}
+library(lme4)
+library(ggplot2)
+library(RColorBrewer)
+library(dplyr)
+library(lmerTest)
+library (ggpubr)
+library(emmeans)
+library(car)
+library(directlabels)
+library(ggpubr)
+library(patchwork)
+library(cowplot)
+```
+
+```{r set working directory}
+
+knitr::opts_knit$set(root.dir = "C:\\Users\\brandall\\Dropbox\\bean_dip_2018-2024\\greenhouse trials\\UMD Summer 2022 Greenhouse_monoculture\\Datasheets")
+
+```
+
+```{r load in dataframes}
+#Reference data frame
+reference <- read.csv("Tray and Pot Assignments/beanDIP_2022singlestrain_reference_analysis.csv")
+
+#Predictor variable dataframes, remove controls and NAs
+weightdata <- reference %>%
+  left_join(read.csv('Feeding Trial/Feeding Trial_GH2022_caterpillar_weights_clean.csv')) %>%
+  filter(culture_id != "control") %>%
+  filter(!is.na(relative_growth_rate))
+
+herbivorydata <- reference %>%
+  left_join(read.csv('Feeding Trial/Feeding Trial_Herbivory Data_LeafByte_clean.csv')) %>%
+  filter(culture_id != "control") %>%
+  filter(!is.na(percent_consumed)) %>%
+  filter(pot_id != "Test")
+
+trichomedata <- reference %>%
+  left_join(read.csv('Leaf Traits/LeafTraits_trichomes_clean.csv')) %>%
+  filter(strain_num !="none") %>%
+  filter(!is.na(trichomes_top))
+
+sladata <- reference %>%
+  left_join(read.csv('Leaf Traits/Leaf Traits_sla_clean.csv')) %>%
+  filter(culture_id != "control") %>%
+  filter(!is.na(specific_leaf_area))
+
+photosynqdata <- reference %>%
+  left_join(read.csv('Leaf Traits/Leaf Traits_photosynq_clean.csv')) %>%
+  filter(culture_id != "control") %>%
+  filter(!is.na(Phi2))
+  
+harvestdata <- reference %>%
+  left_join(read.csv('Harvest/Harvest_singlestrain_2022_clean.csv')) %>%
+  filter(culture_id != "control") %>%
+  filter(!is.na(tot_biomass_g))
+
+```
+
+```{r Convert fixed effects in dataframes to factors and characters}
+
+#Caterpillar weight dataframe
+weightdata$bench <- as.character(weightdata$bench)
+weightdata$block <- as.factor(weightdata$block)
+weightdata$sub_block <- as.factor(weightdata$sub_block)
+weightdata$tray_number <- as.factor(weightdata$tray_number)
+weightdata$tray_position <- as.factor(weightdata$tray_position)
+weightdata$water_regimen <- as.factor(weightdata$water_regimen)
+weightdata$strain_num <- as.character(weightdata$strain_num)
+weightdata$species <- as.factor(weightdata$species)
+
+# Herbivory dataframe
+herbivorydata$bench <- as.character(herbivorydata$bench)
+herbivorydata$block <- as.factor(herbivorydata$block)
+herbivorydata$sub_block <- as.factor(herbivorydata$sub_block)
+herbivorydata$tray_number <- as.factor(herbivorydata$tray_number)
+herbivorydata$tray_position <- as.factor(herbivorydata$tray_position)
+herbivorydata$water_regimen <- as.factor(herbivorydata$water_regimen)
+herbivorydata$strain_num <- as.character(herbivorydata$strain_num)
+herbivorydata$species <- as.factor(herbivorydata$species)
+
+#Leaf punch dataframe
+leafpunchdata$bench <- as.character(leafpunchdata$bench)
+leafpunchdata$block <- as.factor(leafpunchdata$block)
+leafpunchdata$sub_block <- as.factor(leafpunchdata$sub_block)
+leafpunchdata$tray_number <- as.factor(leafpunchdata$tray_number)
+leafpunchdata$tray_position <- as.factor(leafpunchdata$tray_position)
+leafpunchdata$water_regimen <- as.factor(leafpunchdata$water_regimen)
+leafpunchdata$strain_num <- as.factor(leafpunchdata$strain_num)
+leafpunchdata$species <- as.factor(leafpunchdata$species)
+leafpunchdata$herb_treat <- as.factor(leafpunchdata$herb_treat)
+leafpunchdata$water_herb <- as.factor(leafpunchdata$water_herb)
+leafpunchdata$selected_from <- as.factor(leafpunchdata$selected_from)
+
+#Photosynq dataframe
+photosynqdata$bench <- as.character(photosynqdata$bench)
+photosynqdata$block <- as.factor(photosynqdata$block)
+photosynqdata$sub_block <- as.factor(photosynqdata$sub_block)
+photosynqdata$tray_number <- as.factor(photosynqdata$tray_number)
+photosynqdata$tray_position <- as.factor(photosynqdata$tray_position)
+photosynqdata$water_regimen <- as.factor(photosynqdata$water_regimen)
+photosynqdata$strain_num <- as.factor(photosynqdata$strain_num)
+photosynqdata$species <- as.factor(photosynqdata$species)
+photosynqdata$plant_height <- as.numeric(photosynqdata$plant_height)
+
+#Harvest dataframe
+harvestdata$bench <- as.character(harvestdata$bench)
+harvestdata$block <- as.factor(harvestdata$block)
+harvestdata$sub_block <- as.factor(harvestdata$sub_block)
+harvestdata$tray_number <- as.factor(harvestdata$tray_number)
+harvestdata$tray_position <- as.factor(harvestdata$tray_position)
+harvestdata$water_regimen <- as.factor(harvestdata$water_regimen)
+harvestdata$strain_num <- as.character(harvestdata$strain_num, levels=unique(harvestdata$strain_num))
+harvestdata$herb_treat <- as.factor(harvestdata$herb_treat)
+harvestdata$species <- as.factor(harvestdata$species)
+
+```
+
+```{r LMMs and plots caterpillars}
+
+#Caterpillar RGR
+weight_model_strain <- lmer(relative_growth_rate ~ water_regimen + strain_num + water_regimen:strain_num + (1|sub_block), data=weightdata)
+summary(weight_model_strain)
+ranef(weight_model_strain)
+anova(weight_model_strain)
+plot_model(weight_model_strain, type = "int", mdrt.values = "meansd")
+tab_model(weight_model_strain)
+plot(weight_model_strain)
+hist(residuals(weight_model_strain))
+
+#Consumed leaf area
+herbivory_model_strain_cons <- lmer(consumed_leaf_area ~ water_regimen + strain_num + water_regimen:strain_num + (1|sub_block), data=herbivorydata)
+summary(herbivory_model_strain_cons)
+ranef(herbivory_model_strain_cons)
+anova(herbivory_model_strain_cons)
+plot(herbivory_model_strain_cons)
+hist(residuals(herbivory_model_strain_cons))
+
+#Proportion leaf area consumed
+herbivory_model_water_per <- lmer(percent_consumed ~ water_regimen + strain_num + water_regimen:strain_num + (1|sub_block), data=herbivorydata)
+summary(herbivory_model_water_per)
+ranef(herbivory_model_water_per)
+anova(herbivory_model_water_per)
+plot(herbivory_model_water_per)
+hist(residuals(herbivory_model_water_per))
+confint(herbivory_model_water_per)
+
+#Beta regression modeling
+herbivorydata$percent_consumed_prop <- herbivorydata$percent_consumed / 100
+betareg_model <- glmmTMB(percent_consumed_prop ~ water_regimen + strain_num + water_regimen:strain_num + (1|sub_block), 
+                      family = binomial(link = "logit"), data = herbivorydata)
+summary(betareg_model)
+hist(residuals(betareg_model))
+hist(residuals(herbivory_model_water_per))
+```
+
+
+```{r LMMS leaf punch data}
+
+#****SLA**** Herbivory significant
+slamodel <- lmer(specific_leaf_area ~ water_regimen + strain_num + herb_treat+ water_regimen:strain_num + herb_treat:strain_num + water_regimen:herb_treat  +(1|sub_block), data=leafpunchdata)
+summary(slamodel)
+ranef(slamodel)
+anova(slamodel)
+plot(slamodel)
+hist(residuals(slamodel))
+
+#****LDMC**** Herbivory significant
+ldmcmodel <- lmer(leaf_dry_matter_content ~ water_regimen + strain_num + herb_treat + water_regimen:strain_num + strain_num:herb_treat + water_regimen:herb_treat +(1|sub_block), data=leafpunchdata)
+summary(ldmcmodel)
+ranef(ldmcmodel)
+anova(ldmcmodel)
+plot(ldmcmodel)
+hist(residuals(ldmcmodel))
+
+
+#****% water content **** Herbivory significant 
+pwcmodel <- lmer(perc_wc ~ water_regimen + strain_num + herb_treat+ water_regimen:strain_num + herb_treat:strain_num + water_regimen:herb_treat  +(1|sub_block), data=leafpunchdata)
+summary(pwcmodel)
+ranef(pwcmodel)
+anova(pwcmodel)
+plot(pwcmodel)
+hist(residuals(pwcmodel))
+
+```
+
+
+```{r LMMS photosynq data}
+
+#****Leaf Temperature Differential****# Strain ID and herbivory weakly significant
+leaftempdiffmodel <- lmer(Leaf_Temperature_Differential ~ water_regimen + strain_num + herb_treat + water_regimen:herb_treat + water_regimen:strain_num + strain_num:herb_treat + (1|sub_block), data=photosynqdata)
+summary(leaftempdiffmodel)
+ranef(leaftempdiffmodel)
+anova(leaftempdiffmodel)
+plot(leaftempdiffmodel)
+hist(residuals(leaftempdiffmodel))
+tab_model(leaftempdiffmodel, show.stat=T)
+
+#**** NPQt ****# Strain ID, herbivory, and watering:strain ID interaction significant. When I change strain num to a contrast sum it didn't change anything.
+NPQtmodel <- lmer(NPQt ~ water_regimen + strain_num + herb_treat + water_regimen:strain_num + water_regimen:herb_treat + strain_num:herb_treat + (1|sub_block), data=photosynqdata)
+summary(NPQtmodel)
+ranef(NPQtmodel)
+anova(NPQtmodel)
+plot(NPQtmodel)
+hist(residuals(NPQtmodel))
+
+#****PhiNO**** *sunburn*- the amount of incoming light that is nether used for photosynthesis nor is dissipated, effectively causing potential damage to the leaf. Herbivory, watering:strain ID significant interaction, watering:herbivory interaction
+contrasts(photosynqdata$strain_num) <- contr.sum
+PhiNOmodel <- lmer(PhiNO ~ water_regimen + strain_num + herb_treat + water_regimen:strain_num + water_regimen:herb_treat + strain_num:herb_treat + (1|sub_block), data=photosynqdata)
+summary(PhiNOmodel)
+ranef(PhiNOmodel)
+anova(PhiNOmodel)
+plot(PhiNOmodel)
+hist(residuals(PhiNOmodel))
+
+#Correlate PhiNO and biomass
+phiNObiomass_model <- lm(tot_biomass_g ~ PhiNO, data = traitharvestdata)
+summary(phiNObiomass_model)
+Anova(phiNObiomass_model)
+
+ggplot(traitharvestdata, aes(x = PhiNO, y = tot_biomass_g)) +
+  geom_point() +  
+  geom_smooth(method = "lm", formula = y ~ x, se = FALSE, color = "blue") + 
+  labs(x = "PhiNO", y = "Plant Biomass (g)") + 
+  theme_minimal()
+
+#****Phi2****# Strain ID, herbivory, and watering:strain ID interaction significant
+Phi2model <- lmer(Phi2 ~ water_regimen + strain_num + herb_treat + water_regimen:strain_num + water_regimen:herb_treat + strain_num:herb_treat + (1|sub_block), data=photosynqdata)
+summary(Phi2model)
+ranef(Phi2model)
+anova(Phi2model)
+plot(Phi2model)
+hist(residuals(Phi2model))
+
+#****Relative Chlorophyll****# Nothing significant, but a watering:herbivory interaction is close (0.012)  
+chlorophyllmodel <- lmer(Relative_Chlorophyll ~ water_regimen + strain_num + herb_treat + water_regimen:herb_treat + water_regimen:strain_num + strain_num:herb_treat + (1|sub_block), data=photosynqdata)
+summary(chlorophyllmodel)
+ranef(chlorophyllmodel)
+anova(chlorophyllmodel)
+plot(chlorophyllmodel)
+hist(residuals(chlorophyllmodel))
+
+#****Plant height****# Watering significant. Plants grew taller in watered treatments compared to droughted plants. Random effect structure changed to bench to avoid singular boundary issues
+heightmodel <- lmer(plant_height_cm ~ water_regimen + strain_num + herb_treat + strain_num:herb_treat + water_regimen:strain_num + water_regimen:herb_treat + (1|bench), data=photosynqdata)
+summary(heightmodel)
+ranef(heightmodel)
+anova(heightmodel)
+plot(heightmodel)
+hist(residuals(heightmodel))
+
+```
+
+```{r LMMS harvest data}
+
+#****Shoot biomass****#
+shootbiomodel <- lmer(shoot_weight_g ~ water_regimen + strain_num + herb_treat + water_regimen:strain_num + water_regimen:herb_treat + strain_num:herb_treat +(1|sub_block), data=harvestdata)
+summary(shootbiomodel)
+ranef(shootbiomodel)
+anova(shootbiomodel)
+plot(shootbiomodel)
+hist(residuals(shootbiomodel))
+
+#****Root biomass****# Watering significant
+rootbiomodel <- lmer(root_weight_g ~ water_regimen + strain_num + herb_treat + water_regimen:strain_num + water_regimen:herb_treat + strain_num:herb_treat +(1|sub_block), data=harvestdata)
+summary(rootbiomodel)
+ranef(rootbiomodel)
+anova(rootbiomodel)
+plot(rootbiomodel)
+hist(residuals(rootbiomodel))
+
+#****Root:shoot ratio****# Watering weakly significant, herbivory significant 
+rootshootmodel <- lmer(root_shoot_ratio ~ water_regimen + herb_treat + strain_num + water_regimen:strain_num + water_regimen:herb_treat + strain_num:herb_treat +(1|sub_block), data=harvestdata)
+summary(rootshootmodel)
+ranef(rootshootmodel)
+anova(rootshootmodel)
+plot(rootshootmodel)
+hist(residuals(rootshootmodel))
+
+#****Total biomass****# Herbivory significant
+totbiomodel <- lmer(tot_biomass_g ~ water_regimen + strain_num + herb_treat + water_regimen:strain_num + strain_num:herb_treat + water_regimen:herb_treat +(1|sub_block), data=harvestdata)
+summary(totbiomodel)
+ranef(totbiomodel)
+anova(totbiomodel)
+ plot(totbiomodel)
+hist(residuals(totbiomodel))
+
+#****Nodule count****# Watering and strain ID significant but there are boundary fit errors. 
+nodnummodel <- lmer(nodule_count ~ water_regimen + strain_num + herb_treat + water_regimen:strain_num + water_regimen:herb_treat + strain_num:herb_treat + (1|sub_block), data=harvestdata)
+summary(nodnummodel)
+ranef(nodnummodel)
+anova(nodnummodel)
+plot(nodnummodel)
+hist(residuals(nodnummodel))
+
+```
+
+```{r multivariate analysis (RDA)}
+
+# Join SLA and photosynq data together 
+traitdata_sub1 <- sladata %>%
+  left_join(photosynqdata)
+
+#****Primary plant trait dataframe****# Add harvest data and remove NAs
+traitdata_all <- harvestdata %>%
+  left_join(traitdata_sub1)
+traitdata_all <- na.exclude(traitdata_all)
+
+#Rename columns for some traits
+traitdata_all <- traitdata_all %>% rename(LTD = Leaf_Temperature_Differential)
+traitdata_all <- traitdata_all %>% rename(SLA = specific_leaf_area)
+traitdata_all <- traitdata_all %>% rename(LWC = perc_wc)
+traitdata_all <- traitdata_all %>% rename(height.cm = plant_height_cm)
+traitdata_all <- traitdata_all %>% rename(shoot.g = shoot_weight_g)
+traitdata_all <- traitdata_all %>% rename(root.g = root_weight_g)
+traitdata_all <- traitdata_all %>% rename(RS.ratio = root_shoot_ratio)
+traitdata_all <- traitdata_all %>% rename(Chlorophyll = Relative_Chlorophyll)
+traitdata_all <- traitdata_all %>% rename(ΦII = ΦII)
+traitdata_all <- traitdata_all %>% rename(ΦNO = ΦNO)
+
+#Create environmental matrix for RDA. 
+traitdata_clean.env <- select(traitdata_all, pot_id, bench, block, sub_block, water_regimen, herb_treat, tray_number, tray_position, strain_num, culture_id, selected_from, species)
+traitdata_clean.env$pot_id <- as.factor(traitdata_clean.env$pot_id)
+traitdata_clean.env$bench <- as.factor(traitdata_clean.env$bench)
+traitdata_clean.env$block <- as.factor(traitdata_clean.env$block)
+traitdata_clean.env$sub_block <- as.factor(traitdata_clean.env$sub_block)
+traitdata_clean.env$tray_number <- as.factor(traitdata_clean.env$tray_number)
+traitdata_clean.env$tray_position <- as.factor(traitdata_clean.env$tray_position)
+traitdata_clean.env$water_regimen <- as.factor(traitdata_clean.env$water_regimen)
+traitdata_clean.env$strain_num <- as.factor(traitdata_clean.env$strain_num)
+traitdata_clean.env$species <- as.factor(traitdata_clean.env$species)
+traitdata_clean.env$herb_treat <- as.factor(traitdata_clean.env$herb_treat)
+traitdata_clean.env$selected_from <- as.factor(traitdata_clean.env$selected_from)
+
+#Set scale. Scale of 3 makes both sites and species are in the same scale to make the distances between plants traits and ellipses directly comparable. 
+scale <- 3
+
+# Create trait data space. Remove thickness because it barely registers on the RDA plot. If I remove ΦNO, I lose an interaction. 
+traitdata_all_sp <- select(traitdata_all, LTD, NPQt, ΦII, ΦNO, Chlorophyll, SLA, shoot.g, root.g, nodule_count, RS.ratio, LWC, height.cm)
+
+#Make sure all variables are scaled
+traitdata_all_sp <- scale(traitdata_all_sp)
+
+#****Full RDA**** Initial model. Strain identity and herbivory main effects
+rda <- rda(traitdata_all_sp ~ water_regimen + strain_num + herb_treat + water_regimen:herb_treat + strain_num:herb_treat + water_regimen:strain_num + Condition(sub_block), data= traitdata_clean.env, scale=TRUE)
+rda
+summary_rda <- summary(rda) 
+summary_rda
+
+#Run ANOVA on fixed effects
+anova(rda, by="term")
+
+#Extract the site scores. Site scores are negative, so I need to use euclidean distances instead of Bray-Curtis. 
+rda_scores <- scores(rda, display = "sites")
+# Convert to dataframe
+rda_scores_df <- as.data.frame(rda_scores)         
+traitdata_clean.env$int <- interaction(traitdata_clean.env$strain_num, traitdata_clean.env$water_regimen)
+#Add interaction column
+rda_scores_df$int <- traitdata_clean.env$int
+
+#Calculate euclidean distances
+distances_euclidean <- vegdist(rda_scores, method = "euclidean")
+
+#Betadisper model testing for differences in strain centroid "dispersion" 
+betadisp_model <- betadisper(distances_euclidean, type="centroid", traitdata_clean.env$int)
+
+#Permutation test
+perm_test <- permutest(betadisp_model, permutations = 999)
+print(perm_test)
+
+```
+
+```{r Caterpillar plots (Figure 1)}
+
+#****Final RGR strain x watering interaction plot****## 
+#*
+weightdata.summary <- weightdata.summary %>%
+  group_by(strain_num) %>%
+  mutate(slope = diff(RGR) / diff(as.numeric(water_regimen == "drought")))
+
+weightdata.summary <- weightdata.summary %>%
+  ungroup() %>%
+  mutate(line_type = ifelse(slope > 0, "solid", "solid"))
+
+
+rgr_plot <- ggplot(weightdata.summary, aes(x = factor(water_regimen, level=c('well-watered', 'drought')), y = RGR, group = strain_num, linetype = line_type, ymax = RGR+se, ymin= RGR-se)) + geom_line() + theme_bw() + scale_linetype_manual(values = c("solid" = "solid")) + xlab('Watering Treatment') + ylab(bquote('Caterpillar Relative Growth Rate ' (mg/day))) + geom_line(size=0.5) + geom_point(size =1) + theme(panel.grid = element_blank())+
+  theme(panel.grid = element_blank(),
+        panel.border = element_blank(),
+        axis.line = element_line(color = "black"),
+        axis.text.y = element_text(color="black", size=rel(1)),
+        axis.text.x = element_text(color="black", size=rel(1),angle=0,hjust=0.5,vjust=1),
+        axis.title = element_text(size=rel(1)),
+        strip.text = element_text(size=rel(1),face="bold"),
+        axis.ticks = element_line(color = "black"),
+        legend.position ="none") +
+  scale_y_continuous(limits = c(0.3, 1.5), breaks = seq(0.3, 1.5, 0.3)) + scale_x_discrete(expand = c(0.2, 0)) +
+  annotate("text", x=1.8, y=1.45, label= "
+  Strain
+  Drought
+  Strain×Drought*", size = 3)
+
+rgr_plot
+
+#****Final RGR strain x watering interaction plot****##
+#*
+herbivorydata.summary <- herbivorydata %>%
+  group_by(water_regimen, strain_num) %>%
+  dplyr::summarise(
+    Percent_Consumed = mean(percent_consumed), se = sd(percent_consumed)/sqrt(n()), na.rm = TRUE
+  )
+herbivorydata.summary
+
+herbivorydata.summary <- herbivorydata.summary %>%
+  group_by(strain_num) %>%
+  mutate(slope = diff(Percent_Consumed) / diff(as.numeric(water_regimen == "drought")))
+
+herbivorydata.summary <- herbivorydata.summary %>%
+  ungroup() %>%
+  mutate(line_type = ifelse(slope > 0, "solid", "solid"))
+
+herb_plot <- ggplot(herbivorydata.summary, aes(x = factor(water_regimen, level=c('well-watered', 'drought')), y = Percent_Consumed, group = strain_num, linetype = line_type, ymax = Percent_Consumed+se, ymin= Percent_Consumed-se)) + geom_line() + theme_bw() + scale_linetype_manual(values = c("solid" = "solid")) + xlab('Watering Treatment') + ylab(bquote('Leaf Area Consumed (%)')) + geom_line(size=1) + geom_point(size = 1) + theme(panel.grid = element_blank())+
+  theme(panel.grid = element_blank(),
+        panel.border = element_blank(),
+        axis.line = element_line(color = "black"),
+        axis.text.y = element_text(color="black", size=rel(1.5)),
+        axis.text.x = element_text(color="black", size=rel(1.5),angle=0,hjust=0.5,vjust=1),
+        axis.title = element_text(size=rel(1)),
+        strip.text = element_text(size=rel(1),face="bold"),
+        axis.ticks = element_line(color = "black"),
+        legend.position ="none") +
+  scale_y_continuous(limits = c(3, 18), breaks = seq(3, 18, 3)) + scale_x_discrete(expand = c(0.2, 0))
+
+
+herb_plot
+
+
+#****Arrange and save caterpillar RGR plot (Figure 1)****###
+arrange_rgr <- ggarrange(rgr_plot , ncol = 1, nrow = 1)
+arrange_rgr
+
+ggsave("Fig1.png", path = "Figs", arrange_rgr, width = 3, height = 4, dpi=300)
+
+```
+
+
+```{r plant trait univariate plots (Figure 2)}
+
+#****Phi2 final interaction plot****###
+
+phi2.summary <- photosynqdata %>%
+  group_by(water_regimen, strain_num) %>%
+  dplyr::summarise(
+    phi2 = mean(Phi2), se = sd(Phi2)/sqrt(n()), cv = sd(Phi2)/mean(Phi2)*100, sd=sd(Phi2)
+  )
+phi2.summary
+
+phi2.summary <- phi2.summary %>%
+  group_by(strain_num) %>%
+  mutate(slope = diff(phi2) / diff(as.numeric(water_regimen == "drought")))
+
+phi2.summary <- phi2.summary %>%
+  ungroup() %>%
+  mutate(line_type = ifelse(slope > 0, "solid", "solid"))
+
+phi2strain_plot <- ggplot(phi2.summary, aes(x = factor(water_regimen, level=c('well-watered', 'drought')), y = phi2, group = strain_num, linetype = line_type, ymax = phi2+se, ymin= phi2-se)) + geom_line() + theme_bw() + scale_linetype_manual(values = c("solid" = "solid")) + xlab('Watering Treatment') + ylab(bquote('ΦII ' (ΔφF/φF[m]))) + geom_line(size=0.5) + geom_point(size =1) + theme(panel.grid = element_blank())+
+  theme(panel.grid = element_blank(),
+        panel.border = element_blank(),
+        axis.line = element_line(color = "black"),
+        axis.text.y = element_text(color="black", size=rel(1)),
+        axis.text.x = element_text(color="black", size=rel(0.8),angle=0,hjust=0.5,vjust=1),
+        axis.title = element_text(size=rel(0.8)),
+        strip.text = element_text(size=rel(1),face="bold"),
+        axis.ticks = element_line(color = "black"),
+        legend.position ="none") + 
+  scale_y_continuous(limits = c(0.4, 0.60), breaks = seq(0.30, 0.60, 0.05)) + scale_x_discrete(expand = c(0.2, 0))
+
+phi2strain_plot
+
+#****Final Phi2 herbivory plot****###
+phi2herb.summary <- photosynqdata %>%
+  group_by(herb_treat) %>%
+  dplyr::summarise(
+    phi2 = mean(Phi2), se = sd(Phi2)/sqrt(n()), cv = sd(Phi2)/mean(Phi2)*100, sd=sd(Phi2)
+  )
+phi2herb.summary
+
+phi2herb.summary$herb_treat <- factor(phi2herb.summary$herb_treat, levels = c("H-", "H+"))
+Phi2herblabs <- c("- Herbivory", "+ Herbivory")
+
+phi2herb_plot <- ggplot(phi2herb.summary, aes(x = factor(herb_treat, level=c('H-', 'H+')), y = phi2, ymax = phi2+se, ymin= phi2-se)) + geom_point(size = 3)+ geom_errorbar(size = 1, width = 0.1) + scale_color_manual('Herbivory treatment', values = c("black", "black")) + theme_bw() + xlab('Herbivory Treatment') + ylab(bquote('ΦII ' (ΔφF/φF[m]))) + geom_line(size=1) + geom_point(size =1) + theme(panel.grid = element_blank())+
+  theme(panel.grid = element_blank(),
+        panel.border = element_blank(),
+        axis.line = element_line(color = "black"),
+        axis.text.y = element_text(color="black", size=rel(1)),
+        axis.text.x = element_text(color="black", size=rel(0.8),angle=0,hjust=0.5,vjust=1),
+        axis.title = element_text(size=rel(0.8)),
+        strip.text = element_text(size=rel(1),face="bold"),
+        axis.ticks = element_line(color = "black"),
+        legend.position ="none") + 
+  scale_y_continuous(limits = c(0.48, 0.53), breaks = seq(0.48, 0.53, 0.01)) + scale_x_discrete(labels = Phi2herblabs, expand = c(0.2, 0))#+
+  #annotate("text", x=1.2, y=0.515, label= "
+  #Strain**
+  #Drought
+  #Herbivory**
+  #Strain×Drought**
+  #Strain×Herbivory
+  #Drought×Herbivory
+  #", size = 2)
+
+phi2herb_plot
+
+#****NPQt final strain x watering interaction plot****###
+
+NPQt.summary <- photosynqdata %>%
+  group_by(water_regimen, strain_num) %>%
+  dplyr::summarise(
+    npqt = mean(NPQt), se = sd(NPQt)/sqrt(n()), cv = sd(NPQt)/mean(NPQt)*100, sd=sd(NPQt)
+  )
+NPQt.summary
+
+NPQt.summary <- NPQt.summary %>%
+  group_by(strain_num) %>%
+  mutate(slope = diff(npqt) / diff(as.numeric(water_regimen == "drought")))
+
+NPQt.summary <- NPQt.summary %>%
+  ungroup() %>%
+  mutate(line_type = ifelse(slope > 0, "solid", "solid"))
+
+
+npqtstrain_plot <- ggplot(NPQt.summary, aes(x = factor(water_regimen, level=c('well-watered', 'drought')), y = npqt, group = strain_num, linetype = line_type, ymax = npqt+se, ymin= npqt-se)) + geom_line() + theme_bw() + scale_linetype_manual(values = c("solid" = "solid")) + xlab('Watering Treatment') + ylab(bquote('NPQt')) + geom_line(size=0.5) + geom_point(size =1) + theme(panel.grid = element_blank())+
+  theme(panel.grid = element_blank(),
+        panel.border = element_blank(),
+        axis.line = element_line(color = "black"),
+        axis.text.y = element_text(color="black", size=rel(1)),
+        axis.text.x = element_text(color="black", size=rel(0.8),angle=0,hjust=0.5,vjust=1),
+        axis.title = element_text(size=rel(0.8)),
+        strip.text = element_text(size=rel(1),face="bold"),
+        axis.ticks = element_line(color = "black"),
+        legend.position ="none")+ scale_y_continuous(limits = c(1, 4.2), breaks = seq(1, 4.2, 0.8)) + scale_x_discrete(expand = c(0.2, 0)) #+
+  #annotate("text", x=2.1, y=3, #label= "
+#Strain**
+#Drought
+#Herbivory**
+#Strain×Drought**
+#Strain×Herbivory
+#Drought×Herbivory
+#")
+
+npqtstrain_plot
+
+#****Final NPQt herbivory plot****###
+
+NPQtherb.summary <- photosynqdata %>%
+  group_by(herb_treat) %>%
+  dplyr::summarise(
+    npqt = mean(NPQt), se = sd(NPQt)/sqrt(n()), cv = sd(NPQt)/mean(NPQt)*100, sd=sd(NPQt)
+  )
+NPQtherb.summary
+
+NPQtherb.summary$herb_treat <- factor(NPQtherb.summary$herb_treat, levels = c("H-", "H+"))
+NPQtherblabs <- c("- Herbivory", "+ Herbivory")
+
+npqtherb_plot <- ggplot(NPQtherb.summary, aes(x = factor(herb_treat, level=c('H-', 'H+')), y = npqt, ymax = npqt+se, ymin= npqt-se)) + geom_point(size = 3)+ geom_errorbar(size = 1, width = 0.1) + scale_color_manual('Herbivory treatment', values = c("black", "black")) + theme_bw() + xlab('Herbivory Treatment') + ylab(bquote('NPQt')) + geom_line(size=1) + geom_point(size =0.5) + theme(panel.grid = element_blank())+
+  theme(panel.grid = element_blank(),
+        panel.border = element_blank(),
+        axis.line = element_line(color = "black"),
+        axis.text.y = element_text(color="black", size=rel(1)),
+        axis.text.x = element_text(color="black", size=rel(0.8),angle=0,hjust=0.5,vjust=1),
+        axis.title = element_text(size=rel(0.8)),
+        strip.text = element_text(size=rel(1),face="bold"),
+        axis.ticks = element_line(color = "black"),
+        legend.position ="none") + 
+  scale_y_continuous(limits = c(1.8, 2.6), breaks = seq(1.8, 2.6, 0.2)) + scale_x_discrete(labels = NPQtherblabs, expand = c(0.2, 0)) #+
+  #annotate("text", x=1.2, y=2, label= "
+  #Strain**
+  #Drought
+  #Herbivory**
+  #Strain×Drought**
+  #Strain×Herbivory
+  #Drought×Herbivory
+  #", size = 2)
+
+npqtherb_plot
+
+#****PhiNO final strain x watering interaction plot****###
+
+PhiNO.summary <- photosynqdata %>%
+  group_by(water_regimen, strain_num) %>%
+  dplyr::summarise(
+    PhiNO_fin = mean(PhiNO), se = sd(PhiNO)/sqrt(n()), cv = sd(PhiNO)/mean(PhiNO)*100, sd=sd(PhiNO)
+  )
+PhiNO.summary
+
+PhiNO.summary <- PhiNO.summary %>%
+  group_by(strain_num) %>%
+  mutate(slope = diff(PhiNO_fin) / diff(as.numeric(water_regimen == "drought")))
+
+PhiNO.summary <- PhiNO.summary %>%
+  ungroup() %>%
+  mutate(line_type = ifelse(slope > 0, "solid", "solid"))
+
+phiNOstrain_plot <- ggplot(PhiNO.summary, aes(x = factor(water_regimen, level=c('well-watered', 'drought')), y = PhiNO_fin, group = strain_num, linetype = line_type, ymax = PhiNO_fin+se, ymin= PhiNO_fin-se)) + geom_line() + theme_bw() + scale_linetype_manual(values = c("solid" = "solid")) + xlab('Watering Treatment') + ylab(bquote('ΦNO ' (F[s]/F[m]))) + geom_line(size=0.5) + geom_point(size =1) + theme(panel.grid = element_blank())+
+  theme(panel.grid = element_blank(),
+        panel.border = element_blank(),
+        axis.line = element_line(color = "black"),
+        axis.text.y = element_text(color="black", size=rel(1)),
+        axis.text.x = element_text(color="black", size=rel(0.8),angle=0,hjust=0.5,vjust=1),
+        axis.title = element_text(size=rel(0.8)),
+        strip.text = element_text(size=rel(1),face="bold"),
+        axis.ticks = element_line(color = "black"),
+        legend.position ="none") +  
+  scale_y_continuous(limits = c(0.12, 0.22), breaks = seq(0.12, 0.22, 0.02))+ scale_x_discrete(expand = c(0.2, 0))
+
+phiNOstrain_plot
+
+#****PhiNO final watering x herbivory interaction plot****###
+PhiNOherb.summary <- photosynqdata %>%
+  group_by(water_regimen, herb_treat) %>%
+  dplyr::summarise(
+    PhiNO_fin = mean(PhiNO), se = sd(PhiNO)/sqrt(n()), cv = sd(PhiNO)/mean(PhiNO)*100, sd=sd(PhiNO)
+  )
+PhiNOherb.summary
+
+PhiNOherb.summary$herb_treat <- factor(PhiNOherb.summary$herb_treat, levels = c("H-", "H+"))
+PhiNOherblabs <- c("- Herbivory", "+ Herbivory")
+
+phiNOherb_plot <- ggplot(PhiNOherb.summary, aes(x = herb_treat, y = PhiNO_fin, group = water_regimen, color=water_regimen, ymax = PhiNO_fin+se, ymin= PhiNO_fin-se)) + geom_line(size=1) + geom_point(size=3) + geom_errorbar(size = 1, width = 0.1) + theme_bw() + scale_color_manual('Watering Treatment', values = c("darkorange", "#0091FF")) + xlab('Herbivory Treatment') + ylab(bquote('ΦNO ' (F[s]/F[m]))) + geom_line(size=1) + geom_point(size =1) + theme(panel.grid = element_blank())+
+  theme(panel.grid = element_blank(),
+        panel.border = element_blank(),
+        axis.line = element_line(color = "black"),
+        axis.text.y = element_text(color="black", size=rel(1)),
+        axis.text.x = element_text(color="black", size=rel(0.8),angle=0,hjust=0.5,vjust=1),
+        axis.title = element_text(size=rel(0.8)),
+        strip.text = element_text(size=rel(1),face="bold"),
+        axis.ticks = element_line(color = "black"),
+        legend.position ="none") +  
+  scale_y_continuous(limits = c(0.16, 0.20), breaks = seq(0.16, 0.20, 0.01))+ scale_x_discrete(labels = PhiNOherblabs, expand = c(0.2, 0)) #+
+  #annotate("text", x=1.2, y=0.192, label= "
+  #Strain
+  #Drought
+  #Herbivory**
+  #Strain×Drought**
+  #Strain×Herbivory
+  #Drought×Herbivory**
+  #", size = 2)
+
+phiNOherb_plot
+
+####****Create textbox model results****###
+
+textbox_Phi2 <- ggdraw() + 
+  draw_label("
+Strain**
+Drought
+Herbivory**
+Strain×Drought**
+Strain×Herbivory
+Drought×Herbivory", fontface ="plain",
+             x = 0, y = 0.5, hjust = 0.5, vjust = 0.2, size = 8)
+
+textbox_NPQt <- ggdraw() + 
+  draw_label("
+Strain**
+Drought
+ Herbivory**
+Strain×Drought**
+Strain×Herbivory
+Drought×Herbivory", 
+             x = 0, y = 0.5, hjust = 0.5, vjust = 0.2, 
+             fontface = "plain", size = 8)
+
+textbox_PhiNO <- ggdraw() + 
+  draw_label(
+"Strain
+Drought
+Herbivory**
+Strain×Drought**
+Strain×Herbivory
+Drought×Herbivory**", 
+             x = 0, y = 0.5, hjust = 0.5, vjust = 0.2, 
+             fontface = "plain", size = 8)
+textbox_PhiNO
+
+#****Arrange and save univariate plant trait plot (Figure. 2) ****##
+
+arrange_photo <- ggarrange(phi2strain_plot, phi2herb_plot, textbox_Phi2, npqtstrain_plot, npqtherb_plot, textbox_NPQt, phiNOstrain_plot , phiNOherb_plot, textbox_PhiNO, ncol = 3, nrow = 3, align = "v", labels  = c("A", "B", "", "C", "D", "", "E", "F"), label.x = 0.15, label.y = 1.1)
+
+arrange_photo
+
+# Add extra space for the labels
+arrangephoto_final <- annotate_figure(arrange_photo,
+                           top = text_grob(" ", size = 25)) # Adds padding at the top
+
+# Adjust margins to prevent cutoff. This is when the model results text gets big
+photofig_final <- ggpar(arrangephoto_final, 
+                 plot.margin = margin(10, 10, 10, 10)) # Adjust margin (top, right, bottom, left)
+
+photofig_final
+
+ggsave("Fig2.tiff", path = "Figs", photofig_final, width = 6, height = 6, dpi=300, compression = "lzw")
+
+```
+
+```{r multivariate analysis plots}
+
+#****RDA strain plot (3A) ****###
+##Line types are all the same-solid lines but strains are grey.
+pdf("rda.pdf",width=8,height=8)
+#png("rda.png", width=8*ppi, height = 8 * ppi, res = ppi)
+rdaplot <- ordiplot(rda, display=c("wa"), cex=0.5, cex.axis=1, cex.lab=1, tck=0.0, mgp=c(2, 0.5, 0), type="none", scaling=scale, xlim=c(-1.5, 1.5), ylim=c(-2, 2), xlab="RDA 1 (33% of constrained variation)", ylab="RDA 2 (19% of constrained variation)")
+points(rda, "sites", col="#5c5c5c", scaling=scale, cex=0.8, pch=19)
+with(traitdata_all, ordiellipse(rda, display="wa", traitdata_all$strain_num, kind="se", conf=0.95, lty = 1, lwd =2, col ="#B9BBB6", show.groups="1"))
+with(traitdata_all, ordiellipse(rda, display="wa", traitdata_all$strain_num, kind="se", conf=0.95, lty = 1, lwd =2, col ="#B9BBB6", show.groups= "2"))
+with(traitdata_all, ordiellipse(rda, display="wa", traitdata_all$strain_num, kind="se", conf=0.95, lty = 1, lwd =2, col ="#B9BBB6", show.groups="3"))
+with(traitdata_all, ordiellipse(rda, display="wa", traitdata_all$strain_num, kind="se", conf=0.95, lty = 1, lwd =2, col ="#B9BBB6", show.groups="4"))
+with(traitdata_all, ordiellipse(rda, display="wa", traitdata_all$strain_num, kind="se", conf=0.95, lty = 1, lwd =2, col ="#B9BBB6", show.groups="5"))
+with(traitdata_all, ordiellipse(rda, display="wa", traitdata_all$strain_num, kind="se", conf=0.95, lty = 1, lwd =2, col ="#B9BBB6", show.groups="6"))
+with(traitdata_all, ordiellipse(rda, display="wa", traitdata_all$strain_num, kind="se", conf=0.95, lty = 1, lwd =2, col ="#B9BBB6", show.groups="7"))
+with(traitdata_all, ordiellipse(rda, display="wa", traitdata_all$strain_num, kind="se", conf=0.95, lty = 1, lwd =2, col ="#B9BBB6", show.groups="8"))
+with(traitdata_all, ordiellipse(rda, display="wa", traitdata_all$strain_num, kind="se", conf=0.95, lty = 1, lwd =2, col ="#B9BBB6", show.groups="9"))
+with(traitdata_all, ordiellipse(rda, display="wa", traitdata_all$strain_num, kind="se", conf=0.95, lty = 1, lwd =2, col ="#B9BBB6", show.groups="10"))
+with(traitdata_all, ordiellipse(rda, display="wa", traitdata_all$strain_num, kind="se", conf=0.95, lty = 1, lwd =2, col ="#B9BBB6", show.groups="11"))
+with(traitdata_all, ordiellipse(rda, display="wa", traitdata_all$strain_num, kind="se", conf=0.95, lty = 1, lwd =2, col ="#B9BBB6", show.groups="12"))
+with(traitdata_all, ordiellipse(rda, display="wa", traitdata_all$strain_num, kind="se", conf=0.95, lty = 1, lwd =2, col ="#B9BBB6", show.groups="13"))
+with(traitdata_all, ordiellipse(rda, display="wa", traitdata_all$strain_num, kind="se", conf=0.95, lty = 1, lwd =2, col ="#B9BBB6", show.groups="14"))
+with(traitdata_all, ordiellipse(rda, display="wa", traitdata_all$strain_num, kind="se", conf=0.95, lty = 1, lwd =2, col ="#B9BBB6", show.groups="15"))
+with(traitdata_all, ordiellipse(rda, display="wa", traitdata_all$strain_num, kind="se", conf=0.95, lty = 1, lwd =2, col ="#B9BBB6", show.groups="16"))
+with(traitdata_all, ordiellipse(rda, display="wa", traitdata_all$strain_num, kind="se", conf=0.95, lty = 1, lwd =2, col ="#B9BBB6", show.groups="17"))
+with(traitdata_all, ordiellipse(rda, display="wa", traitdata_all$strain_num, kind="se", conf=0.95, lty = 1, lwd =2, col ="#B9BBB6", show.groups="18"))
+with(traitdata_all, ordiellipse(rda, display="wa", traitdata_all$strain_num, kind="se", conf=0.95, lty = 1, lwd =2, col ="#B9BBB6", show.groups="19"))
+with(traitdata_all, ordiellipse(rda, display="wa", traitdata_all$strain_num, kind="se", conf=0.95, lty = 1, lwd = 2, col ="#B9BBB6", show.groups="20"))
+with(traitdata_all, ordiellipse(rda, display="wa", traitdata_all$strain_num, kind="se", conf=0.95, lty = 1, lwd =2, col ="#B9BBB6", show.groups="21"))
+with(traitdata_all, ordiellipse(rda, display="wa", traitdata_all$strain_num, kind="se", conf=0.95, lty = 1, lwd =2, col ="#B9BBB6", show.groups="22"))
+with(traitdata_all, ordiellipse(rda, display="wa", traitdata_all$strain_num, kind="se", conf=0.95, lty = 1, lwd =2, col ="#B9BBB6", show.groups="23"))
+with(traitdata_all, ordiellipse(rda, display="wa", traitdata_all$strain_num, kind="se", conf=0.95, lty = 1, lwd =2, col ="#B9BBB6", show.groups="24"))
+#with(traitdata_all, ordiellipse(rda, display="wa", traitdata_all$herb_treat, kind="se", conf=0.95, lty= 1, lwd=3, col ="black", show.groups="H+", bg = rgb(1, 1, 1, 1)))
+#with(traitdata_all, ordiellipse(rda, display="wa", traitdata_all$herb_treat, kind="se", conf=0.95, lty= 1, lwd=3, col ="black", show.groups="H-"))
+with(traitdata_all, ordiellipse(rda, display="wa", groups = traitdata_all$herb_treat, kind="se", conf=0.95, draw = "polygon", lty=1, lwd =3, col ="#949494", label=TRUE))
+
+# add plant traits vectors for variables on top of plot
+#plot(envfit(rda ~ PAR, traitdata_all, display="wa"), arrow.mul = 2, add = TRUE, col="red", cex = 0.8 )
+plot(envfit(rda ~ shoot.g, traitdata_all, display="wa"), arrow.mul = 2, add = TRUE, col="darkred", cex = 0.7, bg = rgb(1, 1, 1, 1))
+plot(envfit(rda ~ LTD, traitdata_all, display="wa"), arrow.mul = 2, add = TRUE, col="darkred", cex = 0.7, bg = rgb(1, 1, 1, 1))
+#plot(envfit(rda ~ Leaf.Angle, traitdata_all, display="wa"), arrow.mul = 2, add = TRUE, col="black", cex = 0.8 )
+plot(envfit(rda ~ NPQt, traitdata_all, display="wa"), arrow.mul = 2, add = TRUE, col="darkred", cex = 0.7, bg = rgb(1, 1, 1, 1))
+plot(envfit(rda ~ ΦNO, traitdata_all, display="wa"), arrow.mul = 2, add = TRUE, col="darkred", cex = 0.7, bg = rgb(1, 1, 1, 1) )
+plot(envfit(rda ~ ΦII, traitdata_all, display="wa"), arrow.mul = 1.7, add = TRUE, col="darkred", cex = 0.7, bg = rgb(1, 1, 1, 1))
+
+plot(envfit(rda ~ height.cm, traitdata_all, display="wa"), arrow.mul = 2, add = TRUE, col="darkred", cex = 0.7, bg = rgb(1, 1, 1, 1))
+#plot(envfit(rda ~ leaves_num, traitdata, display="wa"), arrow.mul = 2, add = TRUE, col="red", cex = 0.8 )
+plot(envfit(rda ~ Chlorophyll, traitdata_all, display="wa"), arrow.mul = 2, add = TRUE, col="darkred", cex = 0.7, bg = rgb(1, 1, 1, 1))
+#plot(envfit(rda ~ Thickness, traitdata, display="wa"), arrow.mul = 2, add = TRUE, col="red", cex = 0.8 )
+plot(envfit(rda ~ SLA, traitdata_all, display="wa"), arrow.mul = 2, add = TRUE, col="darkred", cex = 0.7, bg = rgb(1, 1, 1, 1))
+plot(envfit(rda ~ LWC, traitdata_all, display="wa"), arrow.mul = 2, add = TRUE, col="darkred", cex = 0.7, bg = rgb(1, 1, 1, 1))
+#plot(envfit(rda ~ leaf_dry_matter_content, traitdata, display="wa"), arrow.mul = 2, add = TRUE, col="red", cex = 0.8 )
+plot(envfit(rda ~ nodule_count, traitdata_all, display="wa"), arrow.mul = 1, add = TRUE, col="darkred", cex = 0.7, bg = rgb(1, 1, 1, 1))
+
+plot(envfit(rda ~ root.g, traitdata_all, display="wa"), arrow.mul = 2, add = TRUE, col="darkred", cex = 0.7 , bg = rgb(1, 1, 1, 1))
+#plot(envfit(rda ~ pod_weight_g, traitdata, display="wa"), arrow.mul = 2, add = TRUE, col="red", cex = 0.8 )
+#plot(envfit(rda ~ tot_biomass_g, traitdata, display="wa"), arrow.mul = 2, add = TRUE, col="red", cex = 0.8 )
+plot(envfit(rda ~ RS.ratio, traitdata_all, display="wa"), arrow.mul = 2, add = TRUE, col="darkred", cex = 0.7, bg = rgb(1, 1, 1, 1))
+
+dev.off()
+
+
+#****RDA strain x watering interaction plots (3B-D) ****###
+par(mfrow=c(2,2))
+
+#Strain #2 plot with dotted lines and lighter circles
+strain_2ww_scores <- subset(rda_scores_df, int == "2.well-watered")
+strain_2d_scores <- subset(rda_scores_df, int == "2.drought")
+rdaplot_2int <- ordiplot(rda, display=c("wa"), cex=0.5, cex.axis=1.5, cex.lab=1.5, tck=0.0, mgp=c(2, 0.5, 0), type="none", scaling=scale, xlim=c(-1.5, 1.5), ylim=c(-2, 2), xlab="RDA 1 (33%)", ylab="RDA 2 (19%)")
+with(traitdata_all, ordiellipse(rda, display="wa", traitdata_all$strain_water, kind="se", conf=0.95, lty = 4, lwd =2, col ="#57B9FF", show.groups="2_well-watered"))
+with(traitdata_all, ordiellipse(rda, display="wa", traitdata_all$strain_water, kind="se", conf=0.95, lty = 4, lwd =2, col ="darkorange", show.groups="2_drought"))
+points(strain_2ww_scores$RDA1, strain_2ww_scores$RDA2, col = "#57B9FF", pch = 19, cex = 1.5)
+points(strain_2d_scores$RDA1, strain_2d_scores$RDA2, col = "darkorange", pch = 19, cex = 1.5)
+
+# add plant traits vectors for variables on top of plot
+#plot(envfit(rda ~ PAR, traitdata_all, display="wa"), arrow.mul = 2, add = TRUE, col="red", cex = 0.8 )
+plot(envfit(rda ~ shoot.g, traitdata_all, display="wa"), arrow.mul = 2, add = TRUE, col="darkred", cex = 1.2, bg = rgb(1, 1, 1, 1))
+plot(envfit(rda ~ LTD, traitdata_all, display="wa"), arrow.mul = 2, add = TRUE, col="darkred", cex = 1.2, bg = rgb(1, 1, 1, 1))
+#plot(envfit(rda ~ Leaf.Angle, traitdata_all, display="wa"), arrow.mul = 2, add = TRUE, col="black", cex = 0.8 )
+plot(envfit(rda ~ NPQt, traitdata_all, display="wa"), arrow.mul = 2, add = TRUE, col="darkred", cex = 1.2, bg = rgb(1, 1, 1, 1))
+plot(envfit(rda ~ ΦNO, traitdata_all, display="wa"), arrow.mul = 2, add = TRUE, col="darkred", cex = 1.2, bg = rgb(1, 1, 1, 1) )
+plot(envfit(rda ~ ΦII, traitdata_all, display="wa"), arrow.mul = 1.7, add = TRUE, col="darkred", cex = 1.2, bg = rgb(1, 1, 1, 1))
+
+plot(envfit(rda ~ height.cm, traitdata_all, display="wa"), arrow.mul = 2, add = TRUE, col="darkred", cex = 1.2, bg = rgb(1, 1, 1, 1))
+#plot(envfit(rda ~ leaves_num, traitdata, display="wa"), arrow.mul = 2, add = TRUE, col="red", cex = 0.8 )
+plot(envfit(rda ~ Chlorophyll, traitdata_all, display="wa"), arrow.mul = 2, add = TRUE, col="darkred", cex = 1.2, bg = rgb(1, 1, 1, 1))
+#plot(envfit(rda ~ Thickness, traitdata, display="wa"), arrow.mul = 2, add = TRUE, col="red", cex = 0.8 )
+plot(envfit(rda ~ SLA, traitdata_all, display="wa"), arrow.mul = 2, add = TRUE, col="darkred", cex = 1.2, bg = rgb(1, 1, 1, 1))
+plot(envfit(rda ~ LWC, traitdata_all, display="wa"), arrow.mul = 2, add = TRUE, col="darkred", cex = 1.2, bg = rgb(1, 1, 1, 1))
+#plot(envfit(rda ~ leaf_dry_matter_content, traitdata, display="wa"), arrow.mul = 2, add = TRUE, col="red", cex = 0.8 )
+plot(envfit(rda ~ nodule_count, traitdata_all, display="wa"), arrow.mul = 1, add = TRUE, col="darkred", cex = 1.2, bg = rgb(1, 1, 1, 1))
+
+plot(envfit(rda ~ root.g, traitdata_all, display="wa"), arrow.mul = 2, add = TRUE, col="darkred", cex = 1.2 , bg = rgb(1, 1, 1, 1))
+#plot(envfit(rda ~ pod_weight_g, traitdata, display="wa"), arrow.mul = 2, add = TRUE, col="red", cex = 0.8 )
+#plot(envfit(rda ~ tot_biomass_g, traitdata, display="wa"), arrow.mul = 2, add = TRUE, col="red", cex = 0.8 )
+plot(envfit(rda ~ RS.ratio, traitdata_all, display="wa"), arrow.mul = 2, add = TRUE, col="darkred", cex = 1.2, bg = rgb(1, 1, 1, 1))
+
+#Strain 14
+strain_14ww_scores <- subset(rda_scores_df, int == "14.well-watered")
+strain_14d_scores <- subset(rda_scores_df, int == "14.drought")
+rdaplot_14int <- ordiplot(rda, display=c("wa"), cex=0.5, cex.axis=1.5, cex.lab=1.5, tck=0.0, mgp=c(2, 0.5, 0), type="none", scaling=scale, xlim=c(-2, 2), ylim=c(-2, 2), xlab="RDA 1 (33%)", ylab="RDA 2 (19%)")
+with(traitdata_all, ordiellipse(rda, display="wa", traitdata_all$strain_water, kind="se", conf=0.95, lty = 2, lwd =2, col ="#57B9FF", show.groups="14_well-watered"))
+with(traitdata_all, ordiellipse(rda, display="wa", traitdata_all$strain_water, kind="se", conf=0.95, lty = 2, lwd =2, col ="darkorange", show.groups="14_drought"))
+points(strain_14ww_scores$RDA1, strain_14ww_scores$RDA2, col = "#57B9FF", pch = 19, cex = 1.5)
+points(strain_14d_scores$RDA1, strain_14d_scores$RDA2, col = "darkorange", pch = 19, cex = 1.5)
+# add plant traits vectors for variables on top of plot
+#plot(envfit(rda ~ PAR, traitdata_all, display="wa"), arrow.mul = 2, add = TRUE, col="red", cex = 0.8 )
+plot(envfit(rda ~ shoot.g, traitdata_all, display="wa"), arrow.mul = 2, add = TRUE, col="darkred", cex = 1.2, bg = rgb(1, 1, 1, 1))
+plot(envfit(rda ~ LTD, traitdata_all, display="wa"), arrow.mul = 2, add = TRUE, col="darkred", cex = 1.2, bg = rgb(1, 1, 1, 1))
+#plot(envfit(rda ~ Leaf.Angle, traitdata_all, display="wa"), arrow.mul = 2, add = TRUE, col="black", cex = 0.8 )
+plot(envfit(rda ~ NPQt, traitdata_all, display="wa"), arrow.mul = 2, add = TRUE, col="darkred", cex = 1.2, bg = rgb(1, 1, 1, 1))
+plot(envfit(rda ~ ΦNO, traitdata_all, display="wa"), arrow.mul = 2, add = TRUE, col="darkred", cex = 1.2, bg = rgb(1, 1, 1, 1) )
+plot(envfit(rda ~ ΦII, traitdata_all, display="wa"), arrow.mul = 1.7, add = TRUE, col="darkred", cex = 1.2, bg = rgb(1, 1, 1, 1))
+
+plot(envfit(rda ~ height.cm, traitdata_all, display="wa"), arrow.mul = 2, add = TRUE, col="darkred", cex = 1.2, bg = rgb(1, 1, 1, 1))
+#plot(envfit(rda ~ leaves_num, traitdata, display="wa"), arrow.mul = 2, add = TRUE, col="red", cex = 0.8 )
+plot(envfit(rda ~ Chlorophyll, traitdata_all, display="wa"), arrow.mul = 2, add = TRUE, col="darkred", cex = 1.2, bg = rgb(1, 1, 1, 1))
+#plot(envfit(rda ~ Thickness, traitdata, display="wa"), arrow.mul = 2, add = TRUE, col="red", cex = 0.8 )
+plot(envfit(rda ~ SLA, traitdata_all, display="wa"), arrow.mul = 2, add = TRUE, col="darkred", cex = 1.2, bg = rgb(1, 1, 1, 1))
+plot(envfit(rda ~ LWC, traitdata_all, display="wa"), arrow.mul = 2, add = TRUE, col="darkred", cex = 1.2, bg = rgb(1, 1, 1, 1))
+#plot(envfit(rda ~ leaf_dry_matter_content, traitdata, display="wa"), arrow.mul = 2, add = TRUE, col="red", cex = 0.8 )
+plot(envfit(rda ~ nodule_count, traitdata_all, display="wa"), arrow.mul = 1, add = TRUE, col="darkred", cex = 1.2, bg = rgb(1, 1, 1, 1))
+
+plot(envfit(rda ~ root.g, traitdata_all, display="wa"), arrow.mul = 2, add = TRUE, col="darkred", cex = 1.2 , bg = rgb(1, 1, 1, 1))
+#plot(envfit(rda ~ pod_weight_g, traitdata, display="wa"), arrow.mul = 2, add = TRUE, col="red", cex = 0.8 )
+#plot(envfit(rda ~ tot_biomass_g, traitdata, display="wa"), arrow.mul = 2, add = TRUE, col="red", cex = 0.8 )
+plot(envfit(rda ~ RS.ratio, traitdata_all, display="wa"), arrow.mul = 2, add = TRUE, col="darkred", cex = 1.2, bg = rgb(1, 1, 1, 1))
+
+#Strain 24
+strain_24ww_scores <- subset(rda_scores_df, int == "24.well-watered")
+strain_24d_scores <- subset(rda_scores_df, int == "24.drought")
+rdaplot_24int <- ordiplot(rda, display=c("wa"), cex=0.5, cex.axis=1.5, cex.lab=1.5, tck=0.0, mgp=c(2, 0.5, 0), type="none", scaling=scale, xlim=c(-2, 2), ylim=c(-2, 2), xlab="RDA 1 (33%)", ylab="RDA 2 (19%)")
+with(traitdata_all, ordiellipse(rda, display="wa", traitdata_all$strain_water, kind="se", conf=0.95, lty = 2, lwd =2, col ="#57B9FF", show.groups="24_well-watered"))
+with(traitdata_all, ordiellipse(rda, display="wa", traitdata_all$strain_water, kind="se", conf=0.95, lty = 2, lwd =2, col ="darkorange", show.groups="24_drought"))
+points(strain_24ww_scores$RDA1, strain_24ww_scores$RDA2, col = "#57B9FF", pch = 19, cex = 1.5)
+points(strain_24d_scores$RDA1, strain_24d_scores$RDA2, col = "darkorange", pch = 19, cex = 1.5)
+
+#add plant traits vectors for variables on top of plot
+#plot(envfit(rda ~ PAR, traitdata_all, display="wa"), arrow.mul = 2, add = TRUE, col="red", cex = 0.8 )
+plot(envfit(rda ~ shoot.g, traitdata_all, display="wa"), arrow.mul = 2, add = TRUE, col="darkred", cex = 1.2, bg = rgb(1, 1, 1, 1))
+plot(envfit(rda ~ LTD, traitdata_all, display="wa"), arrow.mul = 2, add = TRUE, col="darkred", cex = 1.2, bg = rgb(1, 1, 1, 1))
+#plot(envfit(rda ~ Leaf.Angle, traitdata_all, display="wa"), arrow.mul = 2, add = TRUE, col="black", cex = 0.8 )
+plot(envfit(rda ~ NPQt, traitdata_all, display="wa"), arrow.mul = 2, add = TRUE, col="darkred", cex = 1.2, bg = rgb(1, 1, 1, 1))
+plot(envfit(rda ~ ΦNO, traitdata_all, display="wa"), arrow.mul = 2, add = TRUE, col="darkred", cex = 1.2, bg = rgb(1, 1, 1, 1) )
+plot(envfit(rda ~ ΦII, traitdata_all, display="wa"), arrow.mul = 1.7, add = TRUE, col="darkred", cex = 1.2, bg = rgb(1, 1, 1, 1))
+
+plot(envfit(rda ~ height.cm, traitdata_all, display="wa"), arrow.mul = 2, add = TRUE, col="darkred", cex = 1.2, bg = rgb(1, 1, 1, 1))
+#plot(envfit(rda ~ leaves_num, traitdata, display="wa"), arrow.mul = 2, add = TRUE, col="red", cex = 0.8 )
+plot(envfit(rda ~ Chlorophyll, traitdata_all, display="wa"), arrow.mul = 2, add = TRUE, col="darkred", cex = 1.2, bg = rgb(1, 1, 1, 1))
+#plot(envfit(rda ~ Thickness, traitdata, display="wa"), arrow.mul = 2, add = TRUE, col="red", cex = 0.8 )
+plot(envfit(rda ~ SLA, traitdata_all, display="wa"), arrow.mul = 2, add = TRUE, col="darkred", cex = 1.2, bg = rgb(1, 1, 1, 1))
+plot(envfit(rda ~ LWC, traitdata_all, display="wa"), arrow.mul = 2, add = TRUE, col="darkred", cex = 1.2, bg = rgb(1, 1, 1, 1))
+#plot(envfit(rda ~ leaf_dry_matter_content, traitdata, display="wa"), arrow.mul = 2, add = TRUE, col="red", cex = 0.8 )
+plot(envfit(rda ~ nodule_count, traitdata_all, display="wa"), arrow.mul = 1, add = TRUE, col="darkred", cex = 1.2, bg = rgb(1, 1, 1, 1))
+
+plot(envfit(rda ~ root.g, traitdata_all, display="wa"), arrow.mul = 2, add = TRUE, col="darkred", cex = 1.2 , bg = rgb(1, 1, 1, 1))
+#plot(envfit(rda ~ pod_weight_g, traitdata, display="wa"), arrow.mul = 2, add = TRUE, col="red", cex = 0.8 )
+#plot(envfit(rda ~ tot_biomass_g, traitdata, display="wa"), arrow.mul = 2, add = TRUE, col="red", cex = 0.8 )
+plot(envfit(rda ~ RS.ratio, traitdata_all, display="wa"), arrow.mul = 2, add = TRUE, col="darkred", cex = 1.2, bg = rgb(1, 1, 1, 1))
+
+#****RDA strain x watering interaction plots all strains (Fig. S2) ****###
+par(mfrow=c(3,4)) 
+
+#Strain 1
+strain_1ww_scores <- subset(rda_scores_df, int == "1.well-watered")
+strain_1d_scores <- subset(rda_scores_df, int == "1.drought")
+rdaplot_1int <- ordiplot(rda, display=c("wa"), cex=0.5, cex.axis=1.0, cex.lab=1.0, tck=0.0, mgp=c(2, 0.5, 0), type="none", scaling=scale, xlim=c(-2, 2), ylim=c(-2, 2), xlab="RDA 1", ylab="RDA 2")
+with(traitdata_all, ordiellipse(rda, display="wa", traitdata_all$strain_water, kind="se", conf=0.95, lty = 2, lwd =2, col ="#57B9FF", show.groups="1_well-watered"))
+with(traitdata_all, ordiellipse(rda, display="wa", traitdata_all$strain_water, kind="se", conf=0.95, lty = 2, lwd =2, col ="orange", show.groups="1_drought"))
+points(strain_1ww_scores$RDA1, strain_1ww_scores$RDA2, col = "#57B9FF", pch = 19, cex = 1.5)
+points(strain_1d_scores$RDA1, strain_1d_scores$RDA2, col = "orange", pch = 19, cex = 1.5)
+
+# add plant traits vectors for variables on top of plot
+#plot(envfit(rda ~ PAR, traitdata_all, display="wa"), arrow.mul = 2, add = TRUE, col="red", cex = 0.8 )
+fit_shoot <- envfit(rda, traitdata_all$shoot.g, display="wa")
+fit_LTD <- envfit(rda, traitdata_all$LTD , display="wa")
+fit_NPQt <- envfit(rda, traitdata_all$NPQt, display="wa")
+fit_ΦNO <- envfit(rda, traitdata_all$ΦNO, display="wa")
+fit_ΦII <- envfit(rda, traitdata_all$ΦII, display="wa")
+fit_height.cm <- envfit(rda, traitdata_all$height.cm, display="wa")
+fit_Chlorophyll <- envfit(rda, traitdata_all$Chlorophyll, display="wa")
+fit_SLA <- envfit(rda, traitdata_all$SLA, display="wa")
+fit_LWC <- envfit(rda, traitdata_all$LWC, display="wa")
+fit_nodule_count <- envfit(rda, traitdata_all$nodule_count, display="wa")
+fit_root.g <- envfit(rda, traitdata_all$root.g, display="wa")
+fit_RS.ratio <- envfit(rda, traitdata_all$RS.ratio, display="wa")
+
+plot(fit_shoot, arrow.mul=2, add=TRUE, col= "darkred", cex=0.7)
+plot(fit_LTD, arrow.mul=2, add=TRUE, col= "darkred", cex=0.7)
+plot(fit_NPQt, arrow.mul=2, add=TRUE, col= "darkred", cex=0.7)
+plot(fit_ΦNO, arrow.mul=2, add=TRUE, col= "darkred", cex=0.7)
+plot(fit_ΦII, arrow.mul=2, add=TRUE, col= "darkred", cex=0.7)
+plot(fit_height.cm, arrow.mul=2, add=TRUE, col= "darkred", cex=0.7)
+plot(fit_Chlorophyll, arrow.mul=2, add=TRUE, col= "darkred", cex=0.7)
+plot(fit_SLA, arrow.mul=2, add=TRUE, col= "darkred", cex=0.7)
+plot(fit_LWC, arrow.mul=2, add=TRUE, col= "darkred", cex=0.7)
+plot(fit_nodule_count, arrow.mul=2, add=TRUE, col= "darkred", cex=0.7)
+plot(fit_root.g, arrow.mul=2, add=TRUE, col= "darkred", cex=0.7)
+plot(fit_RS.ratio, arrow.mul=2, add=TRUE, col= "darkred", cex=0.7)
+
+#Strain #2 plot with dotted lines and lighter circles
+strain_2ww_scores <- subset(rda_scores_df, int == "2.well-watered")
+strain_2d_scores <- subset(rda_scores_df, int == "2.drought")
+rdaplot_2int <- ordiplot(rda, display=c("wa"), cex=0.5, cex.axis=1.0, cex.lab=1.0, tck=0.0, mgp=c(2, 0.5, 0), type="none", scaling=scale, xlim=c(-2, 2), ylim=c(-2, 2), xlab="RDA 1", ylab="RDA 2")
+with(traitdata_all, ordiellipse(rda, display="wa", traitdata_all$strain_water, kind="se", conf=0.95, lty = 2, lwd =2, col ="#57B9FF", show.groups="2_well-watered"))
+with(traitdata_all, ordiellipse(rda, display="wa", traitdata_all$strain_water, kind="se", conf=0.95, lty = 2, lwd =2, col ="orange", show.groups="2_drought"))
+points(strain_2ww_scores$RDA1, strain_2ww_scores$RDA2, col = "#57B9FF", pch = 19, cex = 1.5)
+points(strain_2d_scores$RDA1, strain_2d_scores$RDA2, col = "orange", pch = 19, cex = 1.5)
+
+plot(fit_shoot, arrow.mul=2, add=TRUE, col= "darkred", cex=0.7)
+plot(fit_LTD, arrow.mul=2, add=TRUE, col= "darkred", cex=0.7)
+plot(fit_NPQt, arrow.mul=2, add=TRUE, col= "darkred", cex=0.7)
+plot(fit_ΦNO, arrow.mul=2, add=TRUE, col= "darkred", cex=0.7)
+plot(fit_ΦII, arrow.mul=2, add=TRUE, col= "darkred", cex=0.7)
+plot(fit_height.cm, arrow.mul=2, add=TRUE, col= "darkred", cex=0.7)
+plot(fit_Chlorophyll, arrow.mul=2, add=TRUE, col= "darkred", cex=0.7)
+plot(fit_SLA, arrow.mul=2, add=TRUE, col= "darkred", cex=0.7)
+plot(fit_LWC, arrow.mul=2, add=TRUE, col= "darkred", cex=0.7)
+plot(fit_nodule_count, arrow.mul=2, add=TRUE, col= "darkred", cex=0.7)
+plot(fit_root.g, arrow.mul=2, add=TRUE, col= "darkred", cex=0.7)
+plot(fit_RS.ratio, arrow.mul=2, add=TRUE, col= "darkred", cex=0.7)
+
+#Strain 3
+strain_3ww_scores <- subset(rda_scores_df, int == "3.well-watered")
+strain_3d_scores <- subset(rda_scores_df, int == "3.drought")
+rdaplot_3int <- ordiplot(rda, display=c("wa"), cex=0.5, cex.axis=1.0, cex.lab=1.0, tck=0.0, mgp=c(2, 0.5, 0), type="none", scaling=scale, xlim=c(-2, 2), ylim=c(-2, 2), xlab="RDA 1", ylab="RDA 2")
+with(traitdata_all, ordiellipse(rda, display="wa", traitdata_all$strain_water, kind="se", conf=0.95, lty = 2, lwd =2, col ="#57B9FF", show.groups="3_well-watered"))
+with(traitdata_all, ordiellipse(rda, display="wa", traitdata_all$strain_water, kind="se", conf=0.95, lty = 2, lwd =2, col ="orange", show.groups="3_drought"))
+points(strain_3ww_scores$RDA1, strain_3ww_scores$RDA2, col = "#57B9FF", pch = 19, cex = 1.5)
+points(strain_3d_scores$RDA1, strain_3d_scores$RDA2, col = "orange", pch = 19, cex = 1.5)
+
+plot(fit_shoot, arrow.mul=2, add=TRUE, col= "darkred", cex=0.7)
+plot(fit_LTD, arrow.mul=2, add=TRUE, col= "darkred", cex=0.7)
+plot(fit_NPQt, arrow.mul=2, add=TRUE, col= "darkred", cex=0.7)
+plot(fit_ΦNO, arrow.mul=2, add=TRUE, col= "darkred", cex=0.7)
+plot(fit_ΦII, arrow.mul=2, add=TRUE, col= "darkred", cex=0.7)
+plot(fit_height.cm, arrow.mul=2, add=TRUE, col= "darkred", cex=0.7)
+plot(fit_Chlorophyll, arrow.mul=2, add=TRUE, col= "darkred", cex=0.7)
+plot(fit_SLA, arrow.mul=2, add=TRUE, col= "darkred", cex=0.7)
+plot(fit_LWC, arrow.mul=2, add=TRUE, col= "darkred", cex=0.7)
+plot(fit_nodule_count, arrow.mul=2, add=TRUE, col= "darkred", cex=0.7)
+plot(fit_root.g, arrow.mul=2, add=TRUE, col= "darkred", cex=0.7)
+plot(fit_RS.ratio, arrow.mul=2, add=TRUE, col= "darkred", cex=0.7)
+
+#Strain 4
+strain_4ww_scores <- subset(rda_scores_df, int == "4.well-watered")
+strain_4d_scores <- subset(rda_scores_df, int == "4.drought")
+rdaplot_4int <- ordiplot(rda, display=c("wa"), cex=0.5, cex.axis=1.0, cex.lab=1.0, tck=0.0, mgp=c(2, 0.5, 0), type="none", scaling=scale, xlim=c(-2, 2), ylim=c(-2, 2), xlab="RDA 1", ylab="RDA 2")
+with(traitdata_all, ordiellipse(rda, display="wa", traitdata_all$strain_water, kind="se", conf=0.95, lty = 2, lwd =2, col ="#57B9FF", show.groups="4_well-watered"))
+with(traitdata_all, ordiellipse(rda, display="wa", traitdata_all$strain_water, kind="se", conf=0.95, lty = 2, lwd =2, col ="orange", show.groups="4_drought"))
+points(strain_4ww_scores$RDA1, strain_4ww_scores$RDA2, col = "#57B9FF", pch = 19, cex = 1.5)
+points(strain_4d_scores$RDA1, strain_4d_scores$RDA2, col = "orange", pch = 19, cex = 1.5)
+
+plot(fit_shoot, arrow.mul=2, add=TRUE, col= "darkred", cex=0.7)
+plot(fit_LTD, arrow.mul=2, add=TRUE, col= "darkred", cex=0.7)
+plot(fit_NPQt, arrow.mul=2, add=TRUE, col= "darkred", cex=0.7)
+plot(fit_ΦNO, arrow.mul=2, add=TRUE, col= "darkred", cex=0.7)
+plot(fit_ΦII, arrow.mul=2, add=TRUE, col= "darkred", cex=0.7)
+plot(fit_height.cm, arrow.mul=2, add=TRUE, col= "darkred", cex=0.7)
+plot(fit_Chlorophyll, arrow.mul=2, add=TRUE, col= "darkred", cex=0.7)
+plot(fit_SLA, arrow.mul=2, add=TRUE, col= "darkred", cex=0.7)
+plot(fit_LWC, arrow.mul=2, add=TRUE, col= "darkred", cex=0.7)
+plot(fit_nodule_count, arrow.mul=2, add=TRUE, col= "darkred", cex=0.7)
+plot(fit_root.g, arrow.mul=2, add=TRUE, col= "darkred", cex=0.7)
+plot(fit_RS.ratio, arrow.mul=2, add=TRUE, col= "darkred", cex=0.7)
+
+#Strain 5
+strain_5ww_scores <- subset(rda_scores_df, int == "5.well-watered")
+strain_5d_scores <- subset(rda_scores_df, int == "5.drought")
+rdaplot_5int <- ordiplot(rda, display=c("wa"), cex=0.5, cex.axis=1.0, cex.lab=1.0, tck=0.0, mgp=c(2, 0.5, 0), type="none", scaling=scale, xlim=c(-2, 2), ylim=c(-2, 2), xlab="RDA 1", ylab="RDA 2")
+with(traitdata_all, ordiellipse(rda, display="wa", traitdata_all$strain_water, kind="se", conf=0.95, lty = 2, lwd =2, col ="#57B9FF", show.groups="5_well-watered"))
+with(traitdata_all, ordiellipse(rda, display="wa", traitdata_all$strain_water, kind="se", conf=0.95, lty = 2, lwd =2, col ="orange", show.groups="5_drought"))
+points(strain_5ww_scores$RDA1, strain_5ww_scores$RDA2, col = "#57B9FF", pch = 19, cex = 1.5)
+points(strain_5d_scores$RDA1, strain_5d_scores$RDA2, col = "orange", pch = 19, cex = 1.5)
+
+plot(fit_shoot, arrow.mul=2, add=TRUE, col= "darkred", cex=0.7)
+plot(fit_LTD, arrow.mul=2, add=TRUE, col= "darkred", cex=0.7)
+plot(fit_NPQt, arrow.mul=2, add=TRUE, col= "darkred", cex=0.7)
+plot(fit_ΦNO, arrow.mul=2, add=TRUE, col= "darkred", cex=0.7)
+plot(fit_ΦII, arrow.mul=2, add=TRUE, col= "darkred", cex=0.7)
+plot(fit_height.cm, arrow.mul=2, add=TRUE, col= "darkred", cex=0.7)
+plot(fit_Chlorophyll, arrow.mul=2, add=TRUE, col= "darkred", cex=0.7)
+plot(fit_SLA, arrow.mul=2, add=TRUE, col= "darkred", cex=0.7)
+plot(fit_LWC, arrow.mul=2, add=TRUE, col= "darkred", cex=0.7)
+plot(fit_nodule_count, arrow.mul=2, add=TRUE, col= "darkred", cex=0.7)
+plot(fit_root.g, arrow.mul=2, add=TRUE, col= "darkred", cex=0.7)
+plot(fit_RS.ratio, arrow.mul=2, add=TRUE, col= "darkred", cex=0.7)
+
+#Strain 6
+strain_6ww_scores <- subset(rda_scores_df, int == "6.well-watered")
+strain_6d_scores <- subset(rda_scores_df, int == "6.drought")
+rdaplot_6int <- ordiplot(rda, display=c("wa"), cex=0.5, cex.axis=1.0, cex.lab=1.0, tck=0.0, mgp=c(2, 0.5, 0), type="none", scaling=scale, xlim=c(-2, 2), ylim=c(-2, 2), xlab="RDA 1", ylab="RDA 2")
+with(traitdata_all, ordiellipse(rda, display="wa", traitdata_all$strain_water, kind="se", conf=0.95, lty = 2, lwd =2, col ="#57B9FF", show.groups="6_well-watered"))
+with(traitdata_all, ordiellipse(rda, display="wa", traitdata_all$strain_water, kind="se", conf=0.95, lty = 2, lwd =2, col ="orange", show.groups="6_drought"))
+points(strain_6ww_scores$RDA1, strain_6ww_scores$RDA2, col = "#57B9FF", pch = 19, cex = 1.5)
+points(strain_6d_scores$RDA1, strain_6d_scores$RDA2, col = "orange", pch = 19, cex = 1.5)
+
+plot(fit_shoot, arrow.mul=2, add=TRUE, col= "darkred", cex=0.7)
+plot(fit_LTD, arrow.mul=2, add=TRUE, col= "darkred", cex=0.7)
+plot(fit_NPQt, arrow.mul=2, add=TRUE, col= "darkred", cex=0.7)
+plot(fit_ΦNO, arrow.mul=2, add=TRUE, col= "darkred", cex=0.7)
+plot(fit_ΦII, arrow.mul=2, add=TRUE, col= "darkred", cex=0.7)
+plot(fit_height.cm, arrow.mul=2, add=TRUE, col= "darkred", cex=0.7)
+plot(fit_Chlorophyll, arrow.mul=2, add=TRUE, col= "darkred", cex=0.7)
+plot(fit_SLA, arrow.mul=2, add=TRUE, col= "darkred", cex=0.7)
+plot(fit_LWC, arrow.mul=2, add=TRUE, col= "darkred", cex=0.7)
+plot(fit_nodule_count, arrow.mul=2, add=TRUE, col= "darkred", cex=0.7)
+plot(fit_root.g, arrow.mul=2, add=TRUE, col= "darkred", cex=0.7)
+plot(fit_RS.ratio, arrow.mul=2, add=TRUE, col= "darkred", cex=0.7)
+
+#Strain 7
+strain_7ww_scores <- subset(rda_scores_df, int == "7.well-watered")
+strain_7d_scores <- subset(rda_scores_df, int == "7.drought")
+rdaplot_7int <- ordiplot(rda, display=c("wa"), cex=0.5, cex.axis=1.0, cex.lab=1.0, tck=0.0, mgp=c(2, 0.5, 0), type="none", scaling=scale, xlim=c(-2, 2), ylim=c(-2, 2), xlab="RDA 1", ylab="RDA 2")
+with(traitdata_all, ordiellipse(rda, display="wa", traitdata_all$strain_water, kind="se", conf=0.95, lty = 2, lwd =2, col ="#57B9FF", show.groups="7_well-watered"))
+with(traitdata_all, ordiellipse(rda, display="wa", traitdata_all$strain_water, kind="se", conf=0.95, lty = 2, lwd =2, col ="orange", show.groups="7_drought"))
+points(strain_7ww_scores$RDA1, strain_7ww_scores$RDA2, col = "#57B9FF", pch = 19, cex = 1.5)
+points(strain_7d_scores$RDA1, strain_7d_scores$RDA2, col = "orange", pch = 19, cex = 1.5)
+
+plot(fit_shoot, arrow.mul=2, add=TRUE, col= "darkred", cex=0.7)
+plot(fit_LTD, arrow.mul=2, add=TRUE, col= "darkred", cex=0.7)
+plot(fit_NPQt, arrow.mul=2, add=TRUE, col= "darkred", cex=0.7)
+plot(fit_ΦNO, arrow.mul=2, add=TRUE, col= "darkred", cex=0.7)
+plot(fit_ΦII, arrow.mul=2, add=TRUE, col= "darkred", cex=0.7)
+plot(fit_height.cm, arrow.mul=2, add=TRUE, col= "darkred", cex=0.7)
+plot(fit_Chlorophyll, arrow.mul=2, add=TRUE, col= "darkred", cex=0.7)
+plot(fit_SLA, arrow.mul=2, add=TRUE, col= "darkred", cex=0.7)
+plot(fit_LWC, arrow.mul=2, add=TRUE, col= "darkred", cex=0.7)
+plot(fit_nodule_count, arrow.mul=2, add=TRUE, col= "darkred", cex=0.7)
+plot(fit_root.g, arrow.mul=2, add=TRUE, col= "darkred", cex=0.7)
+plot(fit_RS.ratio, arrow.mul=2, add=TRUE, col= "darkred", cex=0.7)
+
+#Strain 8
+strain_8ww_scores <- subset(rda_scores_df, int == "8.well-watered")
+strain_8d_scores <- subset(rda_scores_df, int == "8.drought")
+rdaplot_8int <- ordiplot(rda, display=c("wa"), cex=0.5, cex.axis=1.0, cex.lab=1.0, tck=0.0, mgp=c(2, 0.5, 0), type="none", scaling=scale, xlim=c(-2, 2), ylim=c(-2, 2), xlab="RDA 1", ylab="RDA 2")
+with(traitdata_all, ordiellipse(rda, display="wa", traitdata_all$strain_water, kind="se", conf=0.95, lty = 2, lwd =2, col ="#57B9FF", show.groups="8_well-watered"))
+with(traitdata_all, ordiellipse(rda, display="wa", traitdata_all$strain_water, kind="se", conf=0.95, lty = 2, lwd =2, col ="orange", show.groups="8_drought"))
+points(strain_8ww_scores$RDA1, strain_8ww_scores$RDA2, col = "#57B9FF", pch = 19, cex = 1.5)
+points(strain_8d_scores$RDA1, strain_8d_scores$RDA2, col = "orange", pch = 19, cex = 1.5)
+
+plot(fit_shoot, arrow.mul=2, add=TRUE, col= "darkred", cex=0.7)
+plot(fit_LTD, arrow.mul=2, add=TRUE, col= "darkred", cex=0.7)
+plot(fit_NPQt, arrow.mul=2, add=TRUE, col= "darkred", cex=0.7)
+plot(fit_ΦNO, arrow.mul=2, add=TRUE, col= "darkred", cex=0.7)
+plot(fit_ΦII, arrow.mul=2, add=TRUE, col= "darkred", cex=0.7)
+plot(fit_height.cm, arrow.mul=2, add=TRUE, col= "darkred", cex=0.7)
+plot(fit_Chlorophyll, arrow.mul=2, add=TRUE, col= "darkred", cex=0.7)
+plot(fit_SLA, arrow.mul=2, add=TRUE, col= "darkred", cex=0.7)
+plot(fit_LWC, arrow.mul=2, add=TRUE, col= "darkred", cex=0.7)
+plot(fit_nodule_count, arrow.mul=2, add=TRUE, col= "darkred", cex=0.7)
+plot(fit_root.g, arrow.mul=2, add=TRUE, col= "darkred", cex=0.7)
+plot(fit_RS.ratio, arrow.mul=2, add=TRUE, col= "darkred", cex=0.7)
+
+#Strain 9
+strain_9ww_scores <- subset(rda_scores_df, int == "9.well-watered")
+strain_9d_scores <- subset(rda_scores_df, int == "9.drought")
+rdaplot_9int <- ordiplot(rda, display=c("wa"), cex=0.5, cex.axis=1.0, cex.lab=1.0, tck=0.0, mgp=c(2, 0.5, 0), type="none", scaling=scale, xlim=c(-2, 2), ylim=c(-2, 2), xlab="RDA 1", ylab="RDA 2")
+with(traitdata_all, ordiellipse(rda, display="wa", traitdata_all$strain_water, kind="se", conf=0.95, lty = 2, lwd =2, col ="#57B9FF", show.groups="9_well-watered"))
+with(traitdata_all, ordiellipse(rda, display="wa", traitdata_all$strain_water, kind="se", conf=0.95, lty = 2, lwd =2, col ="orange", show.groups="9_drought"))
+points(strain_9ww_scores$RDA1, strain_9ww_scores$RDA2, col = "#57B9FF", pch = 19, cex = 1.5)
+points(strain_9d_scores$RDA1, strain_9d_scores$RDA2, col = "orange", pch = 19, cex = 1.5)
+
+plot(fit_shoot, arrow.mul=2, add=TRUE, col= "darkred", cex=0.7)
+plot(fit_LTD, arrow.mul=2, add=TRUE, col= "darkred", cex=0.7)
+plot(fit_NPQt, arrow.mul=2, add=TRUE, col= "darkred", cex=0.7)
+plot(fit_ΦNO, arrow.mul=2, add=TRUE, col= "darkred", cex=0.7)
+plot(fit_ΦII, arrow.mul=2, add=TRUE, col= "darkred", cex=0.7)
+plot(fit_height.cm, arrow.mul=2, add=TRUE, col= "darkred", cex=0.7)
+plot(fit_Chlorophyll, arrow.mul=2, add=TRUE, col= "darkred", cex=0.7)
+plot(fit_SLA, arrow.mul=2, add=TRUE, col= "darkred", cex=0.7)
+plot(fit_LWC, arrow.mul=2, add=TRUE, col= "darkred", cex=0.7)
+plot(fit_nodule_count, arrow.mul=2, add=TRUE, col= "darkred", cex=0.7)
+plot(fit_root.g, arrow.mul=2, add=TRUE, col= "darkred", cex=0.7)
+plot(fit_RS.ratio, arrow.mul=2, add=TRUE, col= "darkred", cex=0.7)
+
+#Strain 10
+strain_10ww_scores <- subset(rda_scores_df, int == "10.well-watered")
+strain_10d_scores <- subset(rda_scores_df, int == "10.drought")
+rdaplot_10int <- ordiplot(rda, display=c("wa"), cex=0.5, cex.axis=1.0, cex.lab=1.0, tck=0.0, mgp=c(2, 0.5, 0), type="none", scaling=scale, xlim=c(-2, 2), ylim=c(-2, 2), xlab="RDA 1", ylab="RDA 2")
+with(traitdata_all, ordiellipse(rda, display="wa", traitdata_all$strain_water, kind="se", conf=0.95, lty = 2, lwd =2, col ="#57B9FF", show.groups="10_well-watered"))
+with(traitdata_all, ordiellipse(rda, display="wa", traitdata_all$strain_water, kind="se", conf=0.95, lty = 2, lwd =2, col ="orange", show.groups="10_drought"))
+points(strain_10ww_scores$RDA1, strain_10ww_scores$RDA2, col = "#57B9FF", pch = 19, cex = 1.5)
+points(strain_10d_scores$RDA1, strain_10d_scores$RDA2, col = "orange", pch = 19, cex = 1.5)
+
+plot(fit_shoot, arrow.mul=2, add=TRUE, col= "darkred", cex=0.7)
+plot(fit_LTD, arrow.mul=2, add=TRUE, col= "darkred", cex=0.7)
+plot(fit_NPQt, arrow.mul=2, add=TRUE, col= "darkred", cex=0.7)
+plot(fit_ΦNO, arrow.mul=2, add=TRUE, col= "darkred", cex=0.7)
+plot(fit_ΦII, arrow.mul=2, add=TRUE, col= "darkred", cex=0.7)
+plot(fit_height.cm, arrow.mul=2, add=TRUE, col= "darkred", cex=0.7)
+plot(fit_Chlorophyll, arrow.mul=2, add=TRUE, col= "darkred", cex=0.7)
+plot(fit_SLA, arrow.mul=2, add=TRUE, col= "darkred", cex=0.7)
+plot(fit_LWC, arrow.mul=2, add=TRUE, col= "darkred", cex=0.7)
+plot(fit_nodule_count, arrow.mul=2, add=TRUE, col= "darkred", cex=0.7)
+plot(fit_root.g, arrow.mul=2, add=TRUE, col= "darkred", cex=0.7)
+plot(fit_RS.ratio, arrow.mul=2, add=TRUE, col= "darkred", cex=0.7)
+
+#Strain 11
+strain_11ww_scores <- subset(rda_scores_df, int == "11.well-watered")
+strain_11d_scores <- subset(rda_scores_df, int == "11.drought")
+rdaplot_11int <- ordiplot(rda, display=c("wa"), cex=0.5, cex.axis=1.0, cex.lab=1.0, tck=0.0, mgp=c(2, 0.5, 0), type="none", scaling=scale, xlim=c(-2, 2), ylim=c(-2, 2), xlab="RDA 1", ylab="RDA 2")
+with(traitdata_all, ordiellipse(rda, display="wa", traitdata_all$strain_water, kind="se", conf=0.95, lty = 2, lwd =2, col ="#57B9FF", show.groups="11_well-watered"))
+with(traitdata_all, ordiellipse(rda, display="wa", traitdata_all$strain_water, kind="se", conf=0.95, lty = 2, lwd =2, col ="orange", show.groups="11_drought"))
+points(strain_11ww_scores$RDA1, strain_11ww_scores$RDA2, col = "#57B9FF", pch = 19, cex = 1.5)
+points(strain_11d_scores$RDA1, strain_11d_scores$RDA2, col = "orange", pch = 19, cex = 1.5)
+
+plot(fit_shoot, arrow.mul=2, add=TRUE, col= "darkred", cex=0.7)
+plot(fit_LTD, arrow.mul=2, add=TRUE, col= "darkred", cex=0.7)
+plot(fit_NPQt, arrow.mul=2, add=TRUE, col= "darkred", cex=0.7)
+plot(fit_ΦNO, arrow.mul=2, add=TRUE, col= "darkred", cex=0.7)
+plot(fit_ΦII, arrow.mul=2, add=TRUE, col= "darkred", cex=0.7)
+plot(fit_height.cm, arrow.mul=2, add=TRUE, col= "darkred", cex=0.7)
+plot(fit_Chlorophyll, arrow.mul=2, add=TRUE, col= "darkred", cex=0.7)
+plot(fit_SLA, arrow.mul=2, add=TRUE, col= "darkred", cex=0.7)
+plot(fit_LWC, arrow.mul=2, add=TRUE, col= "darkred", cex=0.7)
+plot(fit_nodule_count, arrow.mul=2, add=TRUE, col= "darkred", cex=0.7)
+plot(fit_root.g, arrow.mul=2, add=TRUE, col= "darkred", cex=0.7)
+plot(fit_RS.ratio, arrow.mul=2, add=TRUE, col= "darkred", cex=0.7)
+
+#Strain 12
+strain_12ww_scores <- subset(rda_scores_df, int == "12.well-watered")
+strain_12d_scores <- subset(rda_scores_df, int == "12.drought")
+rdaplot_12int <- ordiplot(rda, display=c("wa"), cex=0.5, cex.axis=1.0, cex.lab=1.0, tck=0.0, mgp=c(2, 0.5, 0), type="none", scaling=scale, xlim=c(-2, 2), ylim=c(-2, 2), xlab="RDA 1", ylab="RDA 2")
+with(traitdata_all, ordiellipse(rda, display="wa", traitdata_all$strain_water, kind="se", conf=0.95, lty = 2, lwd =2, col ="#57B9FF", show.groups="12_well-watered"))
+with(traitdata_all, ordiellipse(rda, display="wa", traitdata_all$strain_water, kind="se", conf=0.95, lty = 2, lwd =2, col ="orange", show.groups="12_drought"))
+points(strain_12ww_scores$RDA1, strain_12ww_scores$RDA2, col = "#57B9FF", pch = 19, cex = 1.5)
+points(strain_12d_scores$RDA1, strain_12d_scores$RDA2, col = "orange", pch = 19, cex = 1.5)
+
+plot(fit_shoot, arrow.mul=2, add=TRUE, col= "darkred", cex=0.7)
+plot(fit_LTD, arrow.mul=2, add=TRUE, col= "darkred", cex=0.7)
+plot(fit_NPQt, arrow.mul=2, add=TRUE, col= "darkred", cex=0.7)
+plot(fit_ΦNO, arrow.mul=2, add=TRUE, col= "darkred", cex=0.7)
+plot(fit_ΦII, arrow.mul=2, add=TRUE, col= "darkred", cex=0.7)
+plot(fit_height.cm, arrow.mul=2, add=TRUE, col= "darkred", cex=0.7)
+plot(fit_Chlorophyll, arrow.mul=2, add=TRUE, col= "darkred", cex=0.7)
+plot(fit_SLA, arrow.mul=2, add=TRUE, col= "darkred", cex=0.7)
+plot(fit_LWC, arrow.mul=2, add=TRUE, col= "darkred", cex=0.7)
+plot(fit_nodule_count, arrow.mul=2, add=TRUE, col= "darkred", cex=0.7)
+plot(fit_root.g, arrow.mul=2, add=TRUE, col= "darkred", cex=0.7)
+plot(fit_RS.ratio, arrow.mul=2, add=TRUE, col= "darkred", cex=0.7)
+
+#Strain 13
+strain_13ww_scores <- subset(rda_scores_df, int == "13.well-watered")
+strain_13d_scores <- subset(rda_scores_df, int == "13.drought")
+rdaplot_13int <- ordiplot(rda, display=c("wa"), cex=0.5, cex.axis=1.0, cex.lab=1.0, tck=0.0, mgp=c(2, 0.5, 0), type="none", scaling=scale, xlim=c(-2, 2), ylim=c(-2, 2), xlab="RDA 1", ylab="RDA 2")
+with(traitdata_all, ordiellipse(rda, display="wa", traitdata_all$strain_water, kind="se", conf=0.95, lty = 2, lwd =2, col ="#57B9FF", show.groups="13_well-watered"))
+with(traitdata_all, ordiellipse(rda, display="wa", traitdata_all$strain_water, kind="se", conf=0.95, lty = 2, lwd =2, col ="orange", show.groups="13_drought"))
+points(strain_13ww_scores$RDA1, strain_13ww_scores$RDA2, col = "#57B9FF", pch = 19, cex = 1.5)
+points(strain_13d_scores$RDA1, strain_13d_scores$RDA2, col = "orange", pch = 19, cex = 1.5)
+
+plot(fit_shoot, arrow.mul=2, add=TRUE, col= "darkred", cex=0.7)
+plot(fit_LTD, arrow.mul=2, add=TRUE, col= "darkred", cex=0.7)
+plot(fit_NPQt, arrow.mul=2, add=TRUE, col= "darkred", cex=0.7)
+plot(fit_ΦNO, arrow.mul=2, add=TRUE, col= "darkred", cex=0.7)
+plot(fit_ΦII, arrow.mul=2, add=TRUE, col= "darkred", cex=0.7)
+plot(fit_height.cm, arrow.mul=2, add=TRUE, col= "darkred", cex=0.7)
+plot(fit_Chlorophyll, arrow.mul=2, add=TRUE, col= "darkred", cex=0.7)
+plot(fit_SLA, arrow.mul=2, add=TRUE, col= "darkred", cex=0.7)
+plot(fit_LWC, arrow.mul=2, add=TRUE, col= "darkred", cex=0.7)
+plot(fit_nodule_count, arrow.mul=2, add=TRUE, col= "darkred", cex=0.7)
+plot(fit_root.g, arrow.mul=2, add=TRUE, col= "darkred", cex=0.7)
+plot(fit_RS.ratio, arrow.mul=2, add=TRUE, col= "darkred", cex=0.7)
+
+#Strain 14
+strain_14ww_scores <- subset(rda_scores_df, int == "14.well-watered")
+strain_14d_scores <- subset(rda_scores_df, int == "14.drought")
+rdaplot_14int <- ordiplot(rda, display=c("wa"), cex=0.5, cex.axis=1.0, cex.lab=1.0, tck=0.0, mgp=c(2, 0.5, 0), type="none", scaling=scale, xlim=c(-2, 2), ylim=c(-2, 2), xlab="RDA 1", ylab="RDA 2")
+with(traitdata_all, ordiellipse(rda, display="wa", traitdata_all$strain_water, kind="se", conf=0.95, lty = 2, lwd =2, col ="#57B9FF", show.groups="14_well-watered"))
+with(traitdata_all, ordiellipse(rda, display="wa", traitdata_all$strain_water, kind="se", conf=0.95, lty = 2, lwd =2, col ="orange", show.groups="14_drought"))
+points(strain_14ww_scores$RDA1, strain_14ww_scores$RDA2, col = "#57B9FF", pch = 19, cex = 1.5)
+points(strain_14d_scores$RDA1, strain_14d_scores$RDA2, col = "orange", pch = 19, cex = 1.5)
+
+plot(fit_shoot, arrow.mul=2, add=TRUE, col= "darkred", cex=0.7)
+plot(fit_LTD, arrow.mul=2, add=TRUE, col= "darkred", cex=0.7)
+plot(fit_NPQt, arrow.mul=2, add=TRUE, col= "darkred", cex=0.7)
+plot(fit_ΦNO, arrow.mul=2, add=TRUE, col= "darkred", cex=0.7)
+plot(fit_ΦII, arrow.mul=2, add=TRUE, col= "darkred", cex=0.7)
+plot(fit_height.cm, arrow.mul=2, add=TRUE, col= "darkred", cex=0.7)
+plot(fit_Chlorophyll, arrow.mul=2, add=TRUE, col= "darkred", cex=0.7)
+plot(fit_SLA, arrow.mul=2, add=TRUE, col= "darkred", cex=0.7)
+plot(fit_LWC, arrow.mul=2, add=TRUE, col= "darkred", cex=0.7)
+plot(fit_nodule_count, arrow.mul=2, add=TRUE, col= "darkred", cex=0.7)
+plot(fit_root.g, arrow.mul=2, add=TRUE, col= "darkred", cex=0.7)
+plot(fit_RS.ratio, arrow.mul=2, add=TRUE, col= "darkred", cex=0.7)
+
+#Strain 15
+strain_15ww_scores <- subset(rda_scores_df, int == "15.well-watered")
+strain_15d_scores <- subset(rda_scores_df, int == "15.drought")
+rdaplot_15int <- ordiplot(rda, display=c("wa"), cex=0.5, cex.axis=1.0, cex.lab=1.0, tck=0.0, mgp=c(2, 0.5, 0), type="none", scaling=scale, xlim=c(-2, 2), ylim=c(-2, 2), xlab="RDA 1", ylab="RDA 2")
+with(traitdata_all, ordiellipse(rda, display="wa", traitdata_all$strain_water, kind="se", conf=0.95, lty = 2, lwd =2, col ="#57B9FF", show.groups="15_well-watered"))
+with(traitdata_all, ordiellipse(rda, display="wa", traitdata_all$strain_water, kind="se", conf=0.95, lty = 2, lwd =2, col ="orange", show.groups="15_drought"))
+points(strain_15ww_scores$RDA1, strain_15ww_scores$RDA2, col = "#57B9FF", pch = 19, cex = 1.5)
+points(strain_15d_scores$RDA1, strain_15d_scores$RDA2, col = "orange", pch = 19, cex = 1.5)
+
+plot(fit_shoot, arrow.mul=2, add=TRUE, col= "darkred", cex=0.7)
+plot(fit_LTD, arrow.mul=2, add=TRUE, col= "darkred", cex=0.7)
+plot(fit_NPQt, arrow.mul=2, add=TRUE, col= "darkred", cex=0.7)
+plot(fit_ΦNO, arrow.mul=2, add=TRUE, col= "darkred", cex=0.7)
+plot(fit_ΦII, arrow.mul=2, add=TRUE, col= "darkred", cex=0.7)
+plot(fit_height.cm, arrow.mul=2, add=TRUE, col= "darkred", cex=0.7)
+plot(fit_Chlorophyll, arrow.mul=2, add=TRUE, col= "darkred", cex=0.7)
+plot(fit_SLA, arrow.mul=2, add=TRUE, col= "darkred", cex=0.7)
+plot(fit_LWC, arrow.mul=2, add=TRUE, col= "darkred", cex=0.7)
+plot(fit_nodule_count, arrow.mul=2, add=TRUE, col= "darkred", cex=0.7)
+plot(fit_root.g, arrow.mul=2, add=TRUE, col= "darkred", cex=0.7)
+plot(fit_RS.ratio, arrow.mul=2, add=TRUE, col= "darkred", cex=0.7)
+
+#Strain 16
+strain_16ww_scores <- subset(rda_scores_df, int == "16.well-watered")
+strain_16d_scores <- subset(rda_scores_df, int == "16.drought")
+rdaplot_16int <- ordiplot(rda, display=c("wa"), cex=0.5, cex.axis=1.0, cex.lab=1.0, tck=0.0, mgp=c(2, 0.5, 0), type="none", scaling=scale, xlim=c(-2, 2), ylim=c(-2, 2), xlab="RDA 1", ylab="RDA 2")
+with(traitdata_all, ordiellipse(rda, display="wa", traitdata_all$strain_water, kind="se", conf=0.95, lty = 2, lwd =2, col ="#57B9FF", show.groups="16_well-watered"))
+with(traitdata_all, ordiellipse(rda, display="wa", traitdata_all$strain_water, kind="se", conf=0.95, lty = 2, lwd =2, col ="orange", show.groups="16_drought"))
+points(strain_16ww_scores$RDA1, strain_16ww_scores$RDA2, col = "#57B9FF", pch = 19, cex = 1.5)
+points(strain_16d_scores$RDA1, strain_16d_scores$RDA2, col = "orange", pch = 19, cex = 1.5)
+
+plot(fit_shoot, arrow.mul=2, add=TRUE, col= "darkred", cex=0.7)
+plot(fit_LTD, arrow.mul=2, add=TRUE, col= "darkred", cex=0.7)
+plot(fit_NPQt, arrow.mul=2, add=TRUE, col= "darkred", cex=0.7)
+plot(fit_ΦNO, arrow.mul=2, add=TRUE, col= "darkred", cex=0.7)
+plot(fit_ΦII, arrow.mul=2, add=TRUE, col= "darkred", cex=0.7)
+plot(fit_height.cm, arrow.mul=2, add=TRUE, col= "darkred", cex=0.7)
+plot(fit_Chlorophyll, arrow.mul=2, add=TRUE, col= "darkred", cex=0.7)
+plot(fit_SLA, arrow.mul=2, add=TRUE, col= "darkred", cex=0.7)
+plot(fit_LWC, arrow.mul=2, add=TRUE, col= "darkred", cex=0.7)
+plot(fit_nodule_count, arrow.mul=2, add=TRUE, col= "darkred", cex=0.7)
+plot(fit_root.g, arrow.mul=2, add=TRUE, col= "darkred", cex=0.7)
+plot(fit_RS.ratio, arrow.mul=2, add=TRUE, col= "darkred", cex=0.7)
+
+#Strain 17
+strain_17ww_scores <- subset(rda_scores_df, int == "17.well-watered")
+strain_17d_scores <- subset(rda_scores_df, int == "17.drought")
+rdaplot_17int <- ordiplot(rda, display=c("wa"), cex=0.5, cex.axis=1.0, cex.lab=1.0, tck=0.0, mgp=c(2, 0.5, 0), type="none", scaling=scale, xlim=c(-2, 2), ylim=c(-2, 2), xlab="RDA 1", ylab="RDA 2")
+with(traitdata_all, ordiellipse(rda, display="wa", traitdata_all$strain_water, kind="se", conf=0.95, lty = 2, lwd =2, col ="#57B9FF", show.groups="17_well-watered"))
+with(traitdata_all, ordiellipse(rda, display="wa", traitdata_all$strain_water, kind="se", conf=0.95, lty = 2, lwd =2, col ="orange", show.groups="17_drought"))
+points(strain_17ww_scores$RDA1, strain_17ww_scores$RDA2, col = "#57B9FF", pch = 19, cex = 1.5)
+points(strain_17d_scores$RDA1, strain_17d_scores$RDA2, col = "orange", pch = 19, cex = 1.5)
+
+plot(fit_shoot, arrow.mul=2, add=TRUE, col= "darkred", cex=0.7)
+plot(fit_LTD, arrow.mul=2, add=TRUE, col= "darkred", cex=0.7)
+plot(fit_NPQt, arrow.mul=2, add=TRUE, col= "darkred", cex=0.7)
+plot(fit_ΦNO, arrow.mul=2, add=TRUE, col= "darkred", cex=0.7)
+plot(fit_ΦII, arrow.mul=2, add=TRUE, col= "darkred", cex=0.7)
+plot(fit_height.cm, arrow.mul=2, add=TRUE, col= "darkred", cex=0.7)
+plot(fit_Chlorophyll, arrow.mul=2, add=TRUE, col= "darkred", cex=0.7)
+plot(fit_SLA, arrow.mul=2, add=TRUE, col= "darkred", cex=0.7)
+plot(fit_LWC, arrow.mul=2, add=TRUE, col= "darkred", cex=0.7)
+plot(fit_nodule_count, arrow.mul=2, add=TRUE, col= "darkred", cex=0.7)
+plot(fit_root.g, arrow.mul=2, add=TRUE, col= "darkred", cex=0.7)
+plot(fit_RS.ratio, arrow.mul=2, add=TRUE, col= "darkred", cex=0.7)
+
+#Strain 18
+strain_18ww_scores <- subset(rda_scores_df, int == "18.well-watered")
+strain_18d_scores <- subset(rda_scores_df, int == "18.drought")
+rdaplot_18int <- ordiplot(rda, display=c("wa"), cex=0.5, cex.axis=1.0, cex.lab=1.0, tck=0.0, mgp=c(2, 0.5, 0), type="none", scaling=scale, xlim=c(-2, 2), ylim=c(-2, 2), xlab="RDA 1", ylab="RDA 2")
+with(traitdata_all, ordiellipse(rda, display="wa", traitdata_all$strain_water, kind="se", conf=0.95, lty = 2, lwd =2, col ="#57B9FF", show.groups="18_well-watered"))
+with(traitdata_all, ordiellipse(rda, display="wa", traitdata_all$strain_water, kind="se", conf=0.95, lty = 2, lwd =2, col ="orange", show.groups="18_drought"))
+points(strain_18ww_scores$RDA1, strain_18ww_scores$RDA2, col = "#57B9FF", pch = 19, cex = 1.5)
+points(strain_18d_scores$RDA1, strain_18d_scores$RDA2, col = "orange", pch = 19, cex = 1.5)
+
+plot(fit_shoot, arrow.mul=2, add=TRUE, col= "darkred", cex=0.7)
+plot(fit_LTD, arrow.mul=2, add=TRUE, col= "darkred", cex=0.7)
+plot(fit_NPQt, arrow.mul=2, add=TRUE, col= "darkred", cex=0.7)
+plot(fit_ΦNO, arrow.mul=2, add=TRUE, col= "darkred", cex=0.7)
+plot(fit_ΦII, arrow.mul=2, add=TRUE, col= "darkred", cex=0.7)
+plot(fit_height.cm, arrow.mul=2, add=TRUE, col= "darkred", cex=0.7)
+plot(fit_Chlorophyll, arrow.mul=2, add=TRUE, col= "darkred", cex=0.7)
+plot(fit_SLA, arrow.mul=2, add=TRUE, col= "darkred", cex=0.7)
+plot(fit_LWC, arrow.mul=2, add=TRUE, col= "darkred", cex=0.7)
+plot(fit_nodule_count, arrow.mul=2, add=TRUE, col= "darkred", cex=0.7)
+plot(fit_root.g, arrow.mul=2, add=TRUE, col= "darkred", cex=0.7)
+plot(fit_RS.ratio, arrow.mul=2, add=TRUE, col= "darkred", cex=0.7)
+
+#Strain 19
+strain_19ww_scores <- subset(rda_scores_df, int == "19.well-watered")
+strain_19d_scores <- subset(rda_scores_df, int == "19.drought")
+rdaplot_19int <- ordiplot(rda, display=c("wa"), cex=0.5, cex.axis=1.0, cex.lab=1.0, tck=0.0, mgp=c(2, 0.5, 0), type="none", scaling=scale, xlim=c(-2, 2), ylim=c(-2, 2), xlab="RDA 1", ylab="RDA 2")
+with(traitdata_all, ordiellipse(rda, display="wa", traitdata_all$strain_water, kind="se", conf=0.95, lty = 2, lwd =2, col ="#57B9FF", show.groups="19_well-watered"))
+with(traitdata_all, ordiellipse(rda, display="wa", traitdata_all$strain_water, kind="se", conf=0.95, lty = 2, lwd =2, col ="orange", show.groups="19_drought"))
+points(strain_19ww_scores$RDA1, strain_19ww_scores$RDA2, col = "#57B9FF", pch = 19, cex = 1.5)
+points(strain_19d_scores$RDA1, strain_19d_scores$RDA2, col = "orange", pch = 19, cex = 1.5)
+
+plot(fit_shoot, arrow.mul=2, add=TRUE, col= "darkred", cex=0.7)
+plot(fit_LTD, arrow.mul=2, add=TRUE, col= "darkred", cex=0.7)
+plot(fit_NPQt, arrow.mul=2, add=TRUE, col= "darkred", cex=0.7)
+plot(fit_ΦNO, arrow.mul=2, add=TRUE, col= "darkred", cex=0.7)
+plot(fit_ΦII, arrow.mul=2, add=TRUE, col= "darkred", cex=0.7)
+plot(fit_height.cm, arrow.mul=2, add=TRUE, col= "darkred", cex=0.7)
+plot(fit_Chlorophyll, arrow.mul=2, add=TRUE, col= "darkred", cex=0.7)
+plot(fit_SLA, arrow.mul=2, add=TRUE, col= "darkred", cex=0.7)
+plot(fit_LWC, arrow.mul=2, add=TRUE, col= "darkred", cex=0.7)
+plot(fit_nodule_count, arrow.mul=2, add=TRUE, col= "darkred", cex=0.7)
+plot(fit_root.g, arrow.mul=2, add=TRUE, col= "darkred", cex=0.7)
+plot(fit_RS.ratio, arrow.mul=2, add=TRUE, col= "darkred", cex=0.7)
+
+#Strain 20
+strain_20ww_scores <- subset(rda_scores_df, int == "20.well-watered")
+strain_20d_scores <- subset(rda_scores_df, int == "20.drought")
+rdaplot_20int <- ordiplot(rda, display=c("wa"), cex=0.5, cex.axis=1.0, cex.lab=1.0, tck=0.0, mgp=c(2, 0.5, 0), type="none", scaling=scale, xlim=c(-2, 2), ylim=c(-2, 2), xlab="RDA 1", ylab="RDA 2")
+with(traitdata_all, ordiellipse(rda, display="wa", traitdata_all$strain_water, kind="se", conf=0.95, lty = 2, lwd =2, col ="#57B9FF", show.groups="20_well-watered"))
+with(traitdata_all, ordiellipse(rda, display="wa", traitdata_all$strain_water, kind="se", conf=0.95, lty = 2, lwd =2, col ="orange", show.groups="20_drought"))
+points(strain_20ww_scores$RDA1, strain_20ww_scores$RDA2, col = "#57B9FF", pch = 19, cex = 1.5)
+points(strain_20d_scores$RDA1, strain_20d_scores$RDA2, col = "orange", pch = 19, cex = 1.5)
+
+plot(fit_shoot, arrow.mul=2, add=TRUE, col= "darkred", cex=0.7)
+plot(fit_LTD, arrow.mul=2, add=TRUE, col= "darkred", cex=0.7)
+plot(fit_NPQt, arrow.mul=2, add=TRUE, col= "darkred", cex=0.7)
+plot(fit_ΦNO, arrow.mul=2, add=TRUE, col= "darkred", cex=0.7)
+plot(fit_ΦII, arrow.mul=2, add=TRUE, col= "darkred", cex=0.7)
+plot(fit_height.cm, arrow.mul=2, add=TRUE, col= "darkred", cex=0.7)
+plot(fit_Chlorophyll, arrow.mul=2, add=TRUE, col= "darkred", cex=0.7)
+plot(fit_SLA, arrow.mul=2, add=TRUE, col= "darkred", cex=0.7)
+plot(fit_LWC, arrow.mul=2, add=TRUE, col= "darkred", cex=0.7)
+plot(fit_nodule_count, arrow.mul=2, add=TRUE, col= "darkred", cex=0.7)
+plot(fit_root.g, arrow.mul=2, add=TRUE, col= "darkred", cex=0.7)
+plot(fit_RS.ratio, arrow.mul=2, add=TRUE, col= "darkred", cex=0.7)
+
+#Strain 21
+strain_21ww_scores <- subset(rda_scores_df, int == "21.well-watered")
+strain_21d_scores <- subset(rda_scores_df, int == "21.drought")
+rdaplot_21int <- ordiplot(rda, display=c("wa"), cex=0.5, cex.axis=1.0, cex.lab=1.0, tck=0.0, mgp=c(2, 0.5, 0), type="none", scaling=scale, xlim=c(-2, 2), ylim=c(-2, 2), xlab="RDA 1", ylab="RDA 2")
+with(traitdata_all, ordiellipse(rda, display="wa", traitdata_all$strain_water, kind="se", conf=0.95, lty = 2, lwd =2, col ="#57B9FF", show.groups="21_well-watered"))
+with(traitdata_all, ordiellipse(rda, display="wa", traitdata_all$strain_water, kind="se", conf=0.95, lty = 2, lwd =2, col ="orange", show.groups="21_drought"))
+points(strain_21ww_scores$RDA1, strain_21ww_scores$RDA2, col = "#57B9FF", pch = 19, cex = 1.5)
+points(strain_21d_scores$RDA1, strain_21d_scores$RDA2, col = "orange", pch = 19, cex = 1.5)
+
+plot(fit_shoot, arrow.mul=2, add=TRUE, col= "darkred", cex=0.7)
+plot(fit_LTD, arrow.mul=2, add=TRUE, col= "darkred", cex=0.7)
+plot(fit_NPQt, arrow.mul=2, add=TRUE, col= "darkred", cex=0.7)
+plot(fit_ΦNO, arrow.mul=2, add=TRUE, col= "darkred", cex=0.7)
+plot(fit_ΦII, arrow.mul=2, add=TRUE, col= "darkred", cex=0.7)
+plot(fit_height.cm, arrow.mul=2, add=TRUE, col= "darkred", cex=0.7)
+plot(fit_Chlorophyll, arrow.mul=2, add=TRUE, col= "darkred", cex=0.7)
+plot(fit_SLA, arrow.mul=2, add=TRUE, col= "darkred", cex=0.7)
+plot(fit_LWC, arrow.mul=2, add=TRUE, col= "darkred", cex=0.7)
+plot(fit_nodule_count, arrow.mul=2, add=TRUE, col= "darkred", cex=0.7)
+plot(fit_root.g, arrow.mul=2, add=TRUE, col= "darkred", cex=0.7)
+plot(fit_RS.ratio, arrow.mul=2, add=TRUE, col= "darkred", cex=0.7)
+
+#Strain 22
+strain_22ww_scores <- subset(rda_scores_df, int == "22.well-watered")
+strain_22d_scores <- subset(rda_scores_df, int == "22.drought")
+rdaplot_22int <- ordiplot(rda, display=c("wa"), cex=0.5, cex.axis=1.0, cex.lab=1.0, tck=0.0, mgp=c(2, 0.5, 0), type="none", scaling=scale, xlim=c(-2, 2), ylim=c(-2, 2), xlab="RDA 1", ylab="RDA 2")
+with(traitdata_all, ordiellipse(rda, display="wa", traitdata_all$strain_water, kind="se", conf=0.95, lty = 2, lwd =2, col ="#57B9FF", show.groups="22_well-watered"))
+with(traitdata_all, ordiellipse(rda, display="wa", traitdata_all$strain_water, kind="se", conf=0.95, lty = 2, lwd =2, col ="orange", show.groups="22_drought"))
+points(strain_22ww_scores$RDA1, strain_22ww_scores$RDA2, col = "#57B9FF", pch = 19, cex = 1.5)
+points(strain_22d_scores$RDA1, strain_22d_scores$RDA2, col = "orange", pch = 19, cex = 1.5)
+
+plot(fit_shoot, arrow.mul=2, add=TRUE, col= "darkred", cex=0.7)
+plot(fit_LTD, arrow.mul=2, add=TRUE, col= "darkred", cex=0.7)
+plot(fit_NPQt, arrow.mul=2, add=TRUE, col= "darkred", cex=0.7)
+plot(fit_ΦNO, arrow.mul=2, add=TRUE, col= "darkred", cex=0.7)
+plot(fit_ΦII, arrow.mul=2, add=TRUE, col= "darkred", cex=0.7)
+plot(fit_height.cm, arrow.mul=2, add=TRUE, col= "darkred", cex=0.7)
+plot(fit_Chlorophyll, arrow.mul=2, add=TRUE, col= "darkred", cex=0.7)
+plot(fit_SLA, arrow.mul=2, add=TRUE, col= "darkred", cex=0.7)
+plot(fit_LWC, arrow.mul=2, add=TRUE, col= "darkred", cex=0.7)
+plot(fit_nodule_count, arrow.mul=2, add=TRUE, col= "darkred", cex=0.7)
+plot(fit_root.g, arrow.mul=2, add=TRUE, col= "darkred", cex=0.7)
+plot(fit_RS.ratio, arrow.mul=2, add=TRUE, col= "darkred", cex=0.7)
+
+#Strain 23
+strain_23ww_scores <- subset(rda_scores_df, int == "23.well-watered")
+strain_23d_scores <- subset(rda_scores_df, int == "23.drought")
+rdaplot_23int <- ordiplot(rda, display=c("wa"), cex=0.5, cex.axis=1.0, cex.lab=1.0, tck=0.0, mgp=c(2, 0.5, 0), type="none", scaling=scale, xlim=c(-2, 2), ylim=c(-2, 2), xlab="RDA 1", ylab="RDA 2")
+with(traitdata_all, ordiellipse(rda, display="wa", traitdata_all$strain_water, kind="se", conf=0.95, lty = 2, lwd =2, col ="#57B9FF", show.groups="23_well-watered"))
+with(traitdata_all, ordiellipse(rda, display="wa", traitdata_all$strain_water, kind="se", conf=0.95, lty = 2, lwd =2, col ="orange", show.groups="23_drought"))
+points(strain_23ww_scores$RDA1, strain_23ww_scores$RDA2, col = "#57B9FF", pch = 19, cex = 1.5)
+points(strain_23d_scores$RDA1, strain_23d_scores$RDA2, col = "orange", pch = 19, cex = 1.5)
+
+plot(fit_shoot, arrow.mul=2, add=TRUE, col= "darkred", cex=0.7)
+plot(fit_LTD, arrow.mul=2, add=TRUE, col= "darkred", cex=0.7)
+plot(fit_NPQt, arrow.mul=2, add=TRUE, col= "darkred", cex=0.7)
+plot(fit_ΦNO, arrow.mul=2, add=TRUE, col= "darkred", cex=0.7)
+plot(fit_ΦII, arrow.mul=2, add=TRUE, col= "darkred", cex=0.7)
+plot(fit_height.cm, arrow.mul=2, add=TRUE, col= "darkred", cex=0.7)
+plot(fit_Chlorophyll, arrow.mul=2, add=TRUE, col= "darkred", cex=0.7)
+plot(fit_SLA, arrow.mul=2, add=TRUE, col= "darkred", cex=0.7)
+plot(fit_LWC, arrow.mul=2, add=TRUE, col= "darkred", cex=0.7)
+plot(fit_nodule_count, arrow.mul=2, add=TRUE, col= "darkred", cex=0.7)
+plot(fit_root.g, arrow.mul=2, add=TRUE, col= "darkred", cex=0.7)
+plot(fit_RS.ratio, arrow.mul=2, add=TRUE, col= "darkred", cex=0.7)
+
+#Strain 24
+strain_24ww_scores <- subset(rda_scores_df, int == "24.well-watered")
+strain_24d_scores <- subset(rda_scores_df, int == "24.drought")
+rdaplot_24int <- ordiplot(rda, display=c("wa"), cex=0.5, cex.axis=1.0, cex.lab=1.0, tck=0.0, mgp=c(2, 0.5, 0), type="none", scaling=scale, xlim=c(-2, 2), ylim=c(-2, 2), xlab="RDA 1", ylab="RDA 2")
+with(traitdata_all, ordiellipse(rda, display="wa", traitdata_all$strain_water, kind="se", conf=0.95, lty = 2, lwd =2, col ="#57B9FF", show.groups="24_well-watered"))
+with(traitdata_all, ordiellipse(rda, display="wa", traitdata_all$strain_water, kind="se", conf=0.95, lty = 2, lwd =2, col ="orange", show.groups="24_drought"))
+points(strain_24ww_scores$RDA1, strain_24ww_scores$RDA2, col = "#57B9FF", pch = 19, cex = 1.5)
+points(strain_24d_scores$RDA1, strain_24d_scores$RDA2, col = "orange", pch = 19, cex = 1.5)
+
+plot(fit_shoot, arrow.mul=2, add=TRUE, col= "darkred", cex=0.7)
+plot(fit_LTD, arrow.mul=2, add=TRUE, col= "darkred", cex=0.7)
+plot(fit_NPQt, arrow.mul=2, add=TRUE, col= "darkred", cex=0.7)
+plot(fit_ΦNO, arrow.mul=2, add=TRUE, col= "darkred", cex=0.7)
+plot(fit_ΦII, arrow.mul=2, add=TRUE, col= "darkred", cex=0.7)
+plot(fit_height.cm, arrow.mul=2, add=TRUE, col= "darkred", cex=0.7)
+plot(fit_Chlorophyll, arrow.mul=2, add=TRUE, col= "darkred", cex=0.7)
+plot(fit_SLA, arrow.mul=2, add=TRUE, col= "darkred", cex=0.7)
+plot(fit_LWC, arrow.mul=2, add=TRUE, col= "darkred", cex=0.7)
+plot(fit_nodule_count, arrow.mul=2, add=TRUE, col= "darkred", cex=0.7)
+plot(fit_root.g, arrow.mul=2, add=TRUE, col= "darkred", cex=0.7)
+plot(fit_RS.ratio, arrow.mul=2, add=TRUE, col= "darkred", cex=0.7)
+
+```
+
+```{r Nodule plot (Figure 4)}
+
+#****Final nodule count plot****###
+nodule.summary <- harvestdata %>%
+  group_by(strain_num) %>%
+  dplyr::summarise(
+    nodule_fin = mean(nodule_count), se = sd(nodule_count)/sqrt(n())
+  )
+nodule.summary
+
+nodule.summary$strain_num <- factor(nodule.summary$strain_num, levels = c("1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16", "17", "18", "19", "20", "21", "22", "23", "24"))
+
+nodulestrain_plot <- ggplot(nodule.summary, aes(x = strain_num, y = nodule_fin, ymin = nodule_fin-se, ymax = nodule_fin+se)) + geom_point(size = 2)+ geom_errorbar(size = 1, width = 0.1) +scale_color_manual('Strain ID', values = c("black")) + ylab('Nodule Count') + xlab('Rhizobia Strain Identity') + theme(panel.grid = element_blank(), axis.text.y = element_text(size=rel(3)), axis.text.x = element_text(size=rel(3),angle=0,hjust=0.5,vjust=1), axis.title = element_text(size=rel(3)), strip.text = element_text(size=rel(3),face="bold")) +
+  scale_y_continuous(limits = c(0, 90), breaks = seq(0, 90, 10)) + theme_bw() +
+  theme(panel.grid = element_blank(),
+        panel.border = element_blank(),
+        axis.line = element_line(color = "black"),
+        axis.text.y = element_text(color="black", size=rel(1)),
+        axis.text.x = element_text(color="black", size=rel(1),angle=0,hjust=0.5,vjust=1),
+        axis.title = element_text(size=rel(1)),
+        strip.text = element_text(size=rel(1),face="bold"),
+        axis.ticks = element_line(color = "black"),
+        legend.position ="none")+
+  annotate("text", x=5, y=20, label= "
+  Strain**
+  Drought
+  Herbivory
+  Strain×Drought
+  Strain×Herbivory
+  Drought×Herbivory
+  ", size = 3)
+
+nodulestrain_plot
+
+#****Arrange and save nodule count plot (Figure. 4) ****##
+arrange_nodule <- ggarrange(nodulestrain_plot, ncol = 1, nrow = 1, align = "v", font.label = list(size = 12, color = "black"), label.x = 0.15, label.y = 1.1)
+
+# Adjust margins to prevent cutoff
+nodfig_final <- ggpar(arrange_nodule, 
+                        plot.margin = margin(10, 10, 10, 10)) # Adjust margin (top, right, bottom, left)
+
+nodfig_final
+ggsave("Fig4.tiff", path = "Figs", nodfig_final, width = 6, height = 5, dpi=300)
+
+```
+
