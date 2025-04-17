@@ -17,16 +17,36 @@ library(tidyverse)
 library(lme4)
 library(lmerTest)
 
-#set wd
-#setwd('C:\\Users\\kjkomatsu\\Dropbox (Smithsonian)\\bean_dip_2018-2024\\field trials\\data\\clean_data') # Kim path
-setwd('~/Dropbox/bean_dip_2018-2024/field trials/data/clean_data') # Kelsey path
+
+#### import insect data ####
+
+insects<-read_csv("~/Dropbox/bean_dip_2018-2024/field trials/data/clean_data/clean_insects.csv") %>%
+  filter(count > 0) %>% # only include insects found
+  mutate(variety_name = case_when(year==2019 & variety %in% c(67,27) ~ "AG38X8",
+                                  year==2020 & variety %in% c(2,5) ~ "AG38X8",
+                                  year==2021 & variety %in% c(19,59) ~ "AG38X8",
+                                  year==2019 & variety == 83 ~ "SH3814LL",
+                                  year==2020 & variety == 50 ~ "SH3814LL",
+                                  year==2021 & variety %in% c(57,58) ~ "SH3814LL")) %>% # add in brands
+  rename(seed_coat=treatment_agg) %>%
+  filter(variety_name=="AG38X8" & year== c(2019,2020,2021) 
+         | variety_name=="SH3814LL" & year== 2021) # only varieties and years where we have both treated/untreated
+
+# most functional groups too few to do stats
+insects |> group_by(functional_group) |> summarize(sum=sum(count)) |> arrange(desc(sum))
+target_insects <- insects %>%
+  filter(functional_group %in% c("sucking","chewing","predator","pollinator")) # 80% of data anyway
+
+# so sites display properly from west to east
+target_insects$site<-factor(target_insects$site, levels = c("K", "C", "W", "PH"))
+
 
 #### import damage data ####
-damage2019 <- read.csv('clean_damage_2019.csv') %>% 
+damage2019 <- read.csv('~/Dropbox/bean_dip_2018-2024/field trials/data/clean_data/clean_damage_2019.csv') %>% 
   mutate(pct_pucker='NA', year=2019)
-damage2020 <- read.csv('clean_damage_2020.csv') %>% 
+damage2020 <- read.csv('~/Dropbox/bean_dip_2018-2024/field trials/data/clean_data/clean_damage_2020.csv') %>% 
   mutate(pct_pucker='NA', year=2020)
-damage2021 <- read.csv('clean_damage_2021.csv') %>% 
+damage2021 <- read.csv('~/Dropbox/bean_dip_2018-2024/field trials/data/clean_data/clean_damage_2021.csv') %>% 
   mutate(year=2021)
 # damage2022 <- read.csv('clean_damage_2022.csv') %>% # don't include 2022 because we only have data for untreated
 #   select(-...18, -plot_id) %>% 
@@ -67,7 +87,7 @@ damage$site<-factor(damage$site, levels = c("K", "C", "W", "PH"))
 
 # open clean data file 
 # filter so only varieties/years where we have a treated/untreated comparison
-biomass<-read_csv("clean_all_years_long.csv") %>%
+biomass<-read_csv("~/Dropbox/bean_dip_2018-2024/field trials/data/clean_data/clean_all_years_long.csv") %>%
   filter(brandline=="AG38X8" & year== c(2019,2020,2021) 
          | brandline=="SH3814 LL" & year== 2021) %>%
   select(year:plot_yield_buac)
@@ -78,6 +98,7 @@ biomass$site<-factor(biomass$site, levels = c("K", "C", "W", "PH"))
 ```
 
 # AG38X8 only
+
 ## Chewing Damage
 ```{r echo=FALSE}
 # subset data for analysis
@@ -110,6 +131,7 @@ plot(AG_chew_mod)
 hist(residuals(AG_chew_mod))
 ```
 
+
 ## Stippling Damage
 ```{r echo=FALSE}
 # percent stippling panels
@@ -128,6 +150,158 @@ summary(AG_stip_mod)
 plot(AG_stip_mod)
 hist(residuals(AG_stip_mod))
 ```
+
+
+
+## Chewing Insects
+```{r echo=FALSE}
+# subset data for analysis
+AG_insects <- target_insects %>%
+  filter(variety_name == "AG38X8")
+
+# summary table for graphs
+AG_chewer_siteAvgDf<-target_insects %>%
+  filter(variety_name=="AG38X8" & functional_group == "chewing") %>%
+  group_by(sampling_round,site,year,seed_coat) %>%
+  summarise(site_avg_chewers=mean(count,na.rm=T),
+            se_avg_chewers=sd(count,na.rm = T)/sqrt(n()))
+
+# count chewers panels
+ggplot(AG_chewer_siteAvgDf, aes(x=sampling_round,y=site_avg_chewers,colour=seed_coat,group=seed_coat))+
+  facet_grid(rows=vars(year),cols=vars(site))+geom_point()+geom_line()+
+  geom_errorbar(aes(ymin=site_avg_chewers-se_avg_chewers,
+                    ymax=site_avg_chewers+se_avg_chewers),width=0.2)+
+  labs(title="AG38X8",y="Avg # Chewing Insects ± SE")  
+
+```
+```{r echo=TRUE}
+AG_chewer_mod<-lmer(count~year*sampling_round*seed_coat+(1|site/variety_name),
+                    data=AG_insects %>% filter(functional_group=="chewing"))
+
+hist(AG_insects$count[AG_insects$functional_group=="chewing"])
+
+anova(AG_chewer_mod)
+summary(AG_chewer_mod)
+plot(AG_chewer_mod)
+hist(residuals(AG_chewer_mod))
+```
+
+
+## Sucking Insects
+```{r echo=FALSE}
+
+# summary table for graphs
+AG_sucker_siteAvgDf<-target_insects %>%
+  filter(variety_name=="AG38X8" & functional_group == "sucking") %>%
+  group_by(sampling_round,site,year,seed_coat) %>%
+  summarise(site_avg_suckers=mean(count,na.rm=T),
+            se_avg_suckers=sd(count,na.rm = T)/sqrt(n()))
+
+# count suckers panels
+ggplot(AG_sucker_siteAvgDf, aes(x=sampling_round,y=site_avg_suckers,colour=seed_coat,group=seed_coat))+
+  facet_grid(rows=vars(year),cols=vars(site))+geom_point()+geom_line()+
+  geom_errorbar(aes(ymin=site_avg_suckers-se_avg_suckers,
+                    ymax=site_avg_suckers+se_avg_suckers),width=0.2)+
+  labs(title="AG38X8",y="Avg # Sucking Insects ± SE")  
+
+```
+```{r echo=TRUE}
+AG_sucker_mod<-lmer(count~year*sampling_round*seed_coat+(1|site/variety_name),
+                    data=AG_insects %>% filter(functional_group=="sucking"))
+
+anova(AG_sucker_mod)
+summary(AG_sucker_mod)
+plot(AG_sucker_mod)
+hist(residuals(AG_sucker_mod))
+```
+
+## Herbivores
+Chewing AND sucking insects together
+```{r echo=FALSE}
+
+# summary table for graphs
+AG_herb_siteAvgDf<-target_insects %>%
+  filter(variety_name=="AG38X8" & functional_group %in% c("chewing","sucking")) %>%
+  group_by(sampling_round,site,year,seed_coat) %>%
+  summarise(site_avg_herb=mean(count,na.rm=T),
+            se_avg_herb=sd(count,na.rm = T)/sqrt(n()))
+
+# count herbivores panels
+ggplot(AG_herb_siteAvgDf, aes(x=sampling_round,y=site_avg_herb,colour=seed_coat,group=seed_coat))+
+  facet_grid(rows=vars(year),cols=vars(site))+geom_point()+geom_line()+
+  geom_errorbar(aes(ymin=site_avg_herb-se_avg_herb,
+                    ymax=site_avg_herb+se_avg_herb),width=0.2)+
+  labs(title="AG38X8",y="Avg # Herbivores ± SE")  
+
+```
+```{r echo=TRUE}
+AG_herb_mod<-lmer(count~year*sampling_round*seed_coat+(1|site/variety_name),
+                    data=AG_insects %>% filter(functional_group%in% c("chewing","sucking")))
+
+anova(AG_herb_mod)
+summary(AG_herb_mod)
+plot(AG_herb_mod)
+hist(residuals(AG_herb_mod))
+```
+
+## Predators
+```{r echo=FALSE}
+
+# summary table for graphs
+AG_pred_siteAvgDf<-target_insects %>%
+  filter(variety_name=="AG38X8" & functional_group == "predator") %>%
+  group_by(sampling_round,site,year,seed_coat) %>%
+  summarise(site_avg_pred=mean(count,na.rm=T),
+            se_avg_pred=sd(count,na.rm = T)/sqrt(n()))
+
+# count predators panels
+ggplot(AG_pred_siteAvgDf, aes(x=sampling_round,y=site_avg_pred,colour=seed_coat,group=seed_coat))+
+  facet_grid(rows=vars(year),cols=vars(site))+geom_point()+geom_line()+
+  geom_errorbar(aes(ymin=site_avg_pred-se_avg_pred,
+                    ymax=site_avg_pred+se_avg_pred),width=0.2)+
+  labs(title="AG38X8",y="Avg # Predators ± SE")  
+
+```
+```{r echo=TRUE}
+AG_pred_mod<-lmer(count~year*sampling_round*seed_coat+(1|site/variety_name),
+                    data=AG_insects %>% filter(functional_group=="predator"))
+
+anova(AG_pred_mod)
+summary(AG_pred_mod)
+plot(AG_pred_mod)
+hist(residuals(AG_pred_mod))
+```
+
+
+
+## Pollinators
+```{r echo=FALSE}
+
+# summary table for graphs
+AG_poll_siteAvgDf<-target_insects %>%
+  filter(variety_name=="AG38X8" & functional_group == "pollinator") %>%
+  group_by(sampling_round,site,year,seed_coat) %>%
+  summarise(site_avg_poll=mean(count,na.rm=T),
+            se_avg_poll=sd(count,na.rm = T)/sqrt(n()))
+
+# count pollinators panels
+ggplot(AG_poll_siteAvgDf, aes(x=sampling_round,y=site_avg_poll,colour=seed_coat,group=seed_coat))+
+  facet_grid(rows=vars(year),cols=vars(site))+geom_point()+geom_line()+
+  geom_errorbar(aes(ymin=site_avg_poll-se_avg_poll,
+                    ymax=site_avg_poll+se_avg_poll),width=0.2)+
+  labs(title="AG38X8",y="Avg # Pollinators ± SE")  
+
+```
+```{r echo=TRUE}
+AG_poll_mod<-lmer(count~year*sampling_round*seed_coat+(1|site/variety_name),
+                    data=AG_insects %>% filter(functional_group=="pollinator"))
+
+anova(AG_poll_mod)
+summary(AG_poll_mod)
+plot(AG_poll_mod)
+hist(residuals(AG_poll_mod))
+```
+
 
 ## Plant Biomass
 ```{r echo=FALSE}
@@ -242,6 +416,167 @@ summary(SH_stip_mod)
 plot(SH_stip_mod)
 hist(residuals(SH_stip_mod))
 ```
+
+
+## Chewing Insects
+```{r echo=FALSE}
+# subset data for analysis
+SH_insects <- target_insects %>%
+  filter(variety_name == "SH3814LL")
+
+# summary table for graphs
+SH_chewer_siteAvgDf<-target_insects %>%
+  filter(variety_name=="SH3814LL" & functional_group == "chewing") %>%
+  group_by(sampling_round,site,year,seed_coat) %>%
+  summarise(site_avg_chewers=mean(count,na.rm=T),
+            se_avg_chewers=sd(count,na.rm = T)/sqrt(n()))
+
+# count chewers panels
+ggplot(SH_chewer_siteAvgDf, aes(x=sampling_round,y=site_avg_chewers,colour=seed_coat,group=seed_coat))+
+  facet_grid(rows=vars(year),cols=vars(site))+geom_point()+geom_line()+
+  geom_errorbar(aes(ymin=site_avg_chewers-se_avg_chewers,
+                    ymax=site_avg_chewers+se_avg_chewers),width=0.2)+
+  labs(title="SH3814LL",y="Avg # Chewing Insects ± SE")  
+
+```
+Note: angry model. Drop year because only 2021? Can variety be in any of these models since I'm filtering?
+```{r echo=TRUE}
+SH_chewer_mod<-lmer(count~year*sampling_round*seed_coat+(1|site/variety_name),
+                    data=SH_insects %>% filter(functional_group=="chewing"))
+
+SH_chewer_mod<-lmer(count~sampling_round*seed_coat+(1|site/variety_name),
+                    data=SH_insects %>% filter(functional_group=="chewing"))
+
+hist(SH_insects$count[SH_insects$functional_group=="chewing"])
+
+# anova(SH_chewer_mod)
+# summary(SH_chewer_mod)
+# plot(SH_chewer_mod)
+# hist(residuals(SH_chewer_mod))
+```
+
+
+## Sucking Insects
+```{r echo=FALSE}
+
+# summary table for graphs
+SH_sucker_siteAvgDf<-target_insects %>%
+  filter(variety_name=="SH3814LL" & functional_group == "sucking") %>%
+  group_by(sampling_round,site,year,seed_coat) %>%
+  summarise(site_avg_suckers=mean(count,na.rm=T),
+            se_avg_suckers=sd(count,na.rm = T)/sqrt(n()))
+
+# count suckers panels
+ggplot(SH_sucker_siteAvgDf, aes(x=sampling_round,y=site_avg_suckers,colour=seed_coat,group=seed_coat))+
+  facet_grid(rows=vars(year),cols=vars(site))+geom_point()+geom_line()+
+  geom_errorbar(aes(ymin=site_avg_suckers-se_avg_suckers,
+                    ymax=site_avg_suckers+se_avg_suckers),width=0.2)+
+  labs(title="SH3814LL",y="Avg # Sucking Insects ± SE")  
+
+```
+
+Note: drop year here too? Why wasn't this a problem with damage and biomass models?
+```{r echo=TRUE}
+SH_sucker_mod<-lmer(count~year*sampling_round*seed_coat+(1|site/variety_name),
+                    data=SH_insects %>% filter(functional_group=="sucking"))
+
+anova(SH_sucker_mod)
+summary(SH_sucker_mod)
+plot(SH_sucker_mod)
+hist(residuals(SH_sucker_mod))
+```
+
+## Herbivores
+Chewing AND sucking insects together
+```{r echo=FALSE}
+
+# summary table for graphs
+SH_herb_siteAvgDf<-target_insects %>%
+  filter(variety_name=="SH3814LL" & functional_group %in% c("chewing","sucking")) %>%
+  group_by(sampling_round,site,year,seed_coat) %>%
+  summarise(site_avg_herb=mean(count,na.rm=T),
+            se_avg_herb=sd(count,na.rm = T)/sqrt(n()))
+
+# count herbivores panels
+ggplot(SH_herb_siteAvgDf, aes(x=sampling_round,y=site_avg_herb,colour=seed_coat,group=seed_coat))+
+  facet_grid(rows=vars(year),cols=vars(site))+geom_point()+geom_line()+
+  geom_errorbar(aes(ymin=site_avg_herb-se_avg_herb,
+                    ymax=site_avg_herb+se_avg_herb),width=0.2)+
+  labs(title="SH3814LL",y="Avg # Herbivores ± SE")  
+
+```
+Note: drop year here too? Why wasn't this a problem with damage and biomass models?
+```{r echo=TRUE}
+SH_herb_mod<-lmer(count~year*sampling_round*seed_coat+(1|site/variety_name),
+                    data=SH_insects %>% filter(functional_group%in% c("chewing","sucking")))
+
+anova(SH_herb_mod)
+summary(SH_herb_mod)
+plot(SH_herb_mod)
+hist(residuals(SH_herb_mod))
+```
+
+## Predators
+```{r echo=FALSE}
+
+# summary table for graphs
+SH_pred_siteAvgDf<-target_insects %>%
+  filter(variety_name=="SH3814LL" & functional_group == "predator") %>%
+  group_by(sampling_round,site,year,seed_coat) %>%
+  summarise(site_avg_pred=mean(count,na.rm=T),
+            se_avg_pred=sd(count,na.rm = T)/sqrt(n()))
+
+# count predators panels
+ggplot(SH_pred_siteAvgDf, aes(x=sampling_round,y=site_avg_pred,colour=seed_coat,group=seed_coat))+
+  facet_grid(rows=vars(year),cols=vars(site))+geom_point()+geom_line()+
+  geom_errorbar(aes(ymin=site_avg_pred-se_avg_pred,
+                    ymax=site_avg_pred+se_avg_pred),width=0.2)+
+  labs(title="SH3814LL",y="Avg # Predators ± SE")  
+
+```
+Note: angry model
+```{r echo=TRUE}
+SH_pred_mod<-lmer(count~year*sampling_round*seed_coat+(1|site/variety_name),
+                    data=SH_insects %>% filter(functional_group=="predator"))
+
+# anova(SH_pred_mod)
+# summary(SH_pred_mod)
+# plot(SH_pred_mod)
+# hist(residuals(SH_pred_mod))
+```
+
+
+
+## Pollinators
+NOte: only 13 insects observed
+```{r echo=FALSE}
+
+# summary table for graphs
+SH_poll_siteAvgDf<-target_insects %>%
+  filter(variety_name=="SH3814LL" & functional_group == "pollinator") %>%
+  group_by(sampling_round,site,year,seed_coat) %>%
+  summarise(site_avg_poll=mean(count,na.rm=T),
+            se_avg_poll=sd(count,na.rm = T)/sqrt(n()))
+
+# count pollinators panels
+ggplot(SH_poll_siteAvgDf, aes(x=sampling_round,y=site_avg_poll,colour=seed_coat,group=seed_coat))+
+  facet_grid(rows=vars(year),cols=vars(site))+geom_point()+geom_line()+
+  geom_errorbar(aes(ymin=site_avg_poll-se_avg_poll,
+                    ymax=site_avg_poll+se_avg_poll),width=0.2)+
+  labs(title="SH3814LL",y="Avg # Pollinators ± SE")  
+
+```
+Note: angry model
+```{r echo=TRUE}
+SH_poll_mod<-lmer(count~year*sampling_round*seed_coat+(1|site/variety_name),
+                    data=SH_insects %>% filter(functional_group=="pollinator"))
+
+# anova(SH_poll_mod)
+# summary(SH_poll_mod)
+# plot(SH_poll_mod)
+# hist(residuals(SH_poll_mod))
+```
+
 
 ## Plant Biomass
 ```{r echo=FALSE}
