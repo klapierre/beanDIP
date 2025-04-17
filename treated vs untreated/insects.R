@@ -13,9 +13,9 @@ library(performance)
 library(tidyverse)
 
 
-setwd("C:\\Users\\kjkomatsu\\Dropbox (Smithsonian)\\bean_dip_2018-2024\\field trials\\data\\raw_data") #Kim's path
+# setwd("C:\\Users\\kjkomatsu\\Dropbox (Smithsonian)\\bean_dip_2018-2024\\field trials\\data\\raw_data") #Kim's path
 # setwd("~/Dropbox (Smithsonian)/bean_dip_2018-2024/field trials/data/raw_data") #Karin's path
-
+setwd("~/Dropbox/bean_dip_2018-2024/field trials/data/raw_data") #Kelsey's path
 
 theme_set(theme_bw())
 theme_update(axis.title.x=element_text(size=20, vjust=-0.35), axis.text.x=element_text(size=20),
@@ -75,6 +75,9 @@ insects <- read.csv('beanDIP_insectdata_allyears_kjk.csv') %>%
 # insectNames <- insects %>% 
 #   select(taxa) %>% 
 #   unique()
+
+# export insects df 
+write_csv(insects,file = "../clean_data/clean_insects.csv")
 
 #### Check functional group count normality ####
 with(subset(insects, functional_group=='chewing'), hist(((count))))
