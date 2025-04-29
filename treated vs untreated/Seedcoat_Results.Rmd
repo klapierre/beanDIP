@@ -16,6 +16,7 @@ knitr::opts_chunk$set(echo = FALSE,warning = FALSE,include = TRUE,message = FALS
 library(tidyverse)
 library(lme4)
 library(lmerTest)
+library(emmeans)
 
 
 #### import insect data ####
@@ -99,6 +100,107 @@ biomass$site<-factor(biomass$site, levels = c("K", "C", "W", "PH"))
 
 ```
 
+# Both Varieties Together
+
+## Chewing Damage
+```{r echo=FALSE}
+# summary table for graphs
+damage_siteAvgDf<-damage %>%
+  group_by(sampling.round,year,seed_coat) %>%
+  summarise(site_avg_chew=mean(chew_pct,na.rm=T),
+            se_avg_chew=sd(chew_pct,na.rm = T)/sqrt(n()),
+            site_avg_stip=mean(stip_pct,na.rm=T),
+            se_avg_stip=sd(stip_pct,na.rm=T)/sqrt(n()))
+
+# percent chew panels
+ggplot(damage_siteAvgDf, aes(x=sampling.round,y=site_avg_chew,colour=seed_coat,group=seed_coat))+
+  facet_wrap(~year)+geom_point()+geom_line()+
+  geom_errorbar(aes(ymin=site_avg_chew-se_avg_chew,
+                    ymax=site_avg_chew+se_avg_chew),width=0.2)+
+  labs(title="Both Varieties",y="Avg % Chew ± SE")
+```
+
+## Stippling Damage
+``` {r echo = F}
+# percent stippling panels
+ggplot(damage_siteAvgDf, aes(x=sampling.round,y=site_avg_stip,colour=seed_coat,group=seed_coat))+
+  facet_wrap(~year)+geom_point()+geom_line()+
+  geom_errorbar(aes(ymin=site_avg_stip-se_avg_stip,
+                    ymax=site_avg_stip+se_avg_stip),width=0.2)+
+  labs(title="Both Varieties",y="Avg % Stippling ± SE")
+```
+
+
+## Chewing Insects
+```{r echo=FALSE}
+# summary table for graphs
+chewer_siteAvgDf<-target_insects %>%
+  filter(functional_group == "chewing") %>%
+  group_by(sampling_round,year,seed_coat) %>%
+  summarise(site_avg_chewers=mean(count,na.rm=T),
+            se_avg_chewers=sd(count,na.rm = T)/sqrt(n()))
+
+# count chewers panels
+ggplot(chewer_siteAvgDf, aes(x=sampling_round,y=site_avg_chewers,colour=seed_coat,group=seed_coat))+
+  facet_wrap(~year)+geom_point()+geom_line()+
+  geom_errorbar(aes(ymin=site_avg_chewers-se_avg_chewers,
+                    ymax=site_avg_chewers+se_avg_chewers),width=0.2)+
+  labs(title="Both Varieties",y="Avg # Chewing Insects ± SE")  
+
+```
+
+## Sucking Insects
+```{r echo=FALSE}
+# summary table for graphs
+sucker_siteAvgDf<-target_insects %>%
+  filter(functional_group == "sucking") %>%
+  group_by(sampling_round,year,seed_coat) %>%
+  summarise(site_avg_suckers=mean(count,na.rm=T),
+            se_avg_suckers=sd(count,na.rm = T)/sqrt(n()))
+
+# count suckers panels
+ggplot(sucker_siteAvgDf, aes(x=sampling_round,y=site_avg_suckers,colour=seed_coat,group=seed_coat))+
+  facet_wrap(~year)+geom_point()+geom_line()+
+  geom_errorbar(aes(ymin=site_avg_suckers-se_avg_suckers,
+                    ymax=site_avg_suckers+se_avg_suckers),width=0.2)+
+  labs(title="Both Varieties",y="Avg # Sucking Insects ± SE")  
+
+```
+
+## Plant Biomass
+```{r echo=FALSE}
+# summary table for graphs
+biomass_siteAvgDf<-biomass %>%
+  group_by(year,seed_treat) %>%
+  summarise(site_avg_plant_biomass=mean(plant_biomass_g,na.rm=T),
+            se_plant_biomass=sd(plant_biomass_g,na.rm = T)/sqrt(n()),
+            site_avg_beans=mean(beans_g,na.rm=T),
+            se_beans=sd(beans_g,na.rm = T)/sqrt(n()),
+            site_avg_yield=mean(plot_yield_buac,na.rm=T),
+            se_yield=sd(plot_yield_buac,na.rm = T)/sqrt(n()))
+
+# plant biomass panels
+ggplot(biomass_siteAvgDf,aes(x=seed_treat,y=site_avg_plant_biomass,color=seed_treat))+
+         geom_line(size=1.5)+
+         geom_point(size=3)+
+         geom_errorbar(aes(ymin=site_avg_plant_biomass-se_plant_biomass,
+                           ymax=site_avg_plant_biomass+se_plant_biomass),width=0.2,size=1.5)+
+         facet_wrap(~year,nrow=1)+
+  labs(title="Both Varieties",y="Avg Whole Plant Biomass (g) ± SE")
+```
+
+## Trial Yield
+```{r echo=FALSE}
+# trial yield panels
+ggplot(biomass_siteAvgDf,aes(x=seed_treat,y=site_avg_yield,color=seed_treat))+
+         geom_line(size=1.5)+
+         geom_point(size=3)+
+         geom_errorbar(aes(ymin=site_avg_yield-se_yield,
+                           ymax=site_avg_yield+se_yield),width=0.2,size=1.5)+
+         facet_wrap(~year,nrow=1)+
+  labs(title="Both Varieties",y="Avg Plot Yield (bu/ac) +/- SE")
+```
+
 # AG38X8 only
 
 ## Chewing Damage
@@ -110,7 +212,7 @@ AG_damage<-damage %>%
 # summary table for graphs
 AG_damage_siteAvgDf<-damage %>%
   filter(variety_name=="AG38X8") %>%
-  group_by(sampling.round,site,year,seed_coat) %>%
+  group_by(sampling.round,year,seed_coat) %>%
   summarise(site_avg_chew=mean(chew_pct,na.rm=T),
             se_avg_chew=sd(chew_pct,na.rm = T)/sqrt(n()),
             site_avg_stip=mean(stip_pct,na.rm=T),
@@ -118,19 +220,27 @@ AG_damage_siteAvgDf<-damage %>%
 
 # percent chew panels
 ggplot(AG_damage_siteAvgDf, aes(x=sampling.round,y=site_avg_chew,colour=seed_coat,group=seed_coat))+
-  facet_grid(rows=vars(year),cols=vars(site))+geom_point()+geom_line()+
+  facet_wrap(~year)+geom_point()+geom_line()+
   geom_errorbar(aes(ymin=site_avg_chew-se_avg_chew,
                     ymax=site_avg_chew+se_avg_chew),width=0.2)+
   labs(title="AG38X8",y="Avg % Chew ± SE")
 ```
 
 ```{r echo=TRUE}
-AG_chew_mod<-lmer(chew_pct~year*sampling.round*seed_coat+(1|site),data=AG_damage)
+# 2019
+AG_chew_2019_mod<-lmer(chew_pct~seed_coat*as.factor(sampling.round)+(1|site),data=filter(AG_damage,year==2019))
+anova(AG_chew_2019_mod)
+emmeans(AG_chew_2019_mod,specs = pairwise ~ sampling.round) # round 4 higher than others
 
-anova(AG_chew_mod)
-summary(AG_chew_mod)
-plot(AG_chew_mod)
-hist(residuals(AG_chew_mod))
+# 2020
+AG_chew_2020_mod<-lmer(chew_pct~seed_coat*as.factor(sampling.round)+(1|site),data=filter(AG_damage,year==2020))
+anova(AG_chew_2020_mod)
+emmeans(AG_chew_2020_mod,specs = pairwise ~ interaction(seed_coat,sampling.round)) # sampling round and seedcoat:sampling round
+
+# 2021
+AG_chew_2021_mod<-lmer(chew_pct~seed_coat*as.factor(sampling.round)+(1|site),data=filter(AG_damage,year==2021))
+anova(AG_chew_2021_mod)
+
 ```
 
 
@@ -138,19 +248,28 @@ hist(residuals(AG_chew_mod))
 ```{r echo=FALSE}
 # percent stippling panels
 ggplot(AG_damage_siteAvgDf, aes(x=sampling.round,y=site_avg_stip,colour=seed_coat,group=seed_coat))+
-  facet_grid(rows=vars(year),cols=vars(site))+geom_point()+geom_line()+
+  facet_wrap(~year)+geom_point()+geom_line()+
   geom_errorbar(aes(ymin=site_avg_stip-se_avg_stip,
                     ymax=site_avg_stip+se_avg_stip),width=0.2)+
   labs(title="AG38X8",y="Avg % Stippling ± SE")
 ```
 
 ```{r echo=TRUE}
-AG_stip_mod<-lmer(stip_pct~year*sampling.round*seed_coat+(1|site),data=AG_damage)
+# 2019
+AG_stip_2019_mod<-lmer(stip_pct~seed_coat*as.factor(sampling.round)+(1|site),data=filter(AG_damage,year==2019))
+anova(AG_stip_2019_mod)
+emmeans(AG_stip_2019_mod,specs = pairwise ~ interaction(seed_coat,sampling.round)) # all signif
 
-anova(AG_stip_mod)
-summary(AG_stip_mod)
-plot(AG_stip_mod)
-hist(residuals(AG_stip_mod))
+# 2020
+AG_stip_2020_mod<-lmer(stip_pct~seed_coat*as.factor(sampling.round)+(1|site),data=filter(AG_damage,year==2020))
+anova(AG_stip_2020_mod)
+emmeans(AG_stip_2020_mod,specs = pairwise ~ sampling.round) # round 5 higher than others
+
+# 2021
+AG_stip_2021_mod<-lmer(stip_pct~seed_coat*as.factor(sampling.round)+(1|site),data=filter(AG_damage,year==2021))
+anova(AG_stip_2021_mod)
+emmeans(AG_stip_2021_mod,specs = pairwise ~ sampling.round) # round 4 higher than others
+
 ```
 
 
@@ -158,69 +277,226 @@ hist(residuals(AG_stip_mod))
 ## Chewing Insects
 ```{r echo=FALSE}
 # subset data for analysis
-AG_insects <- target_insects %>%
-  filter(variety_name == "AG38X8")
+AG_chewer <- target_insects %>%
+  filter(variety_name == "AG38X8" & functional_group =="chewing")
 
 # summary table for graphs
 AG_chewer_siteAvgDf<-target_insects %>%
   filter(variety_name=="AG38X8" & functional_group == "chewing") %>%
-  group_by(sampling_round,site,year,seed_coat) %>%
+  group_by(sampling_round,year,seed_coat) %>%
   summarise(site_avg_chewers=mean(count,na.rm=T),
             se_avg_chewers=sd(count,na.rm = T)/sqrt(n()))
 
 # count chewers panels
 ggplot(AG_chewer_siteAvgDf, aes(x=sampling_round,y=site_avg_chewers,colour=seed_coat,group=seed_coat))+
-  facet_grid(rows=vars(year),cols=vars(site))+geom_point()+geom_line()+
+  facet_wrap(~year)+geom_point()+geom_line()+
   geom_errorbar(aes(ymin=site_avg_chewers-se_avg_chewers,
                     ymax=site_avg_chewers+se_avg_chewers),width=0.2)+
   labs(title="AG38X8",y="Avg # Chewing Insects ± SE")  
 
 ```
-Note: how to handle zero-inflation? 
 
 ```{r echo=TRUE}
-AG_chewer_mod<-glmer(count~year*sampling_round*seed_coat+(1|site),family="poisson",
-                    data=AG_insects %>% filter(functional_group=="chewing"))
 
-hist(AG_insects$count[AG_insects$functional_group=="chewing"])
-summary(as.factor(AG_insects$count[AG_insects$functional_group=="chewing"]))
+# 2019
+AG_chewer_2019_mod<-glmer(count~seed_coat*as.factor(sampling_round)+(1|site),family="poisson",
+                    data=filter(AG_chewer, year==2019))
+anova(AG_chewer_2019_mod)
 
-anova(AG_chewer_mod)
-summary(AG_chewer_mod)
-plot(AG_chewer_mod)
-hist(residuals(AG_chewer_mod))
+# 2020
+AG_chewer_2020_mod<-glmer(count~seed_coat*as.factor(sampling_round)+(1|site),family="poisson",
+                    data=filter(AG_chewer, year==2020))
+anova(AG_chewer_2020_mod)
+
+# 2021
+AG_chewer_2021_mod<-glmer(count~seed_coat*as.factor(sampling_round)+(1|site),family="poisson",
+                    data=filter(AG_chewer, year==2021))
+anova(AG_chewer_2021_mod)
+
+
+# code from Karin
+# fit_zinbinom1comp<-glmmTMB(t.flag~tree_div+tree_spp+(1|rep/tree_spp), data=dat, ziformula=~., family=nbinom1)
+# summary(fit_zinbinom1comp)
+# Anova(fit_zinbinom1comp)
+# ##DHARMA CHECK###
+library(DHARMa)
+simulationOutput <- simulateResiduals(fittedModel = AG_chewer_2021_mod)
+plot(simulationOutput)
+testZeroInflation(simulationOutput)
 ```
 
 
 ## Sucking Insects
 ```{r echo=FALSE}
+# subset data for analysis
+AG_sucker <- target_insects %>%
+  filter(variety_name == "AG38X8" & functional_group =="sucking")
 
 # summary table for graphs
 AG_sucker_siteAvgDf<-target_insects %>%
   filter(variety_name=="AG38X8" & functional_group == "sucking") %>%
-  group_by(sampling_round,site,year,seed_coat) %>%
+  group_by(sampling_round,year,seed_coat) %>%
   summarise(site_avg_suckers=mean(count,na.rm=T),
             se_avg_suckers=sd(count,na.rm = T)/sqrt(n()))
 
 # count suckers panels
 ggplot(AG_sucker_siteAvgDf, aes(x=sampling_round,y=site_avg_suckers,colour=seed_coat,group=seed_coat))+
-  facet_grid(rows=vars(year),cols=vars(site))+geom_point()+geom_line()+
+  facet_wrap(~year)+geom_point()+geom_line()+
   geom_errorbar(aes(ymin=site_avg_suckers-se_avg_suckers,
                     ymax=site_avg_suckers+se_avg_suckers),width=0.2)+
   labs(title="AG38X8",y="Avg # Sucking Insects ± SE")  
 
 ```
 ```{r echo=TRUE}
-AG_sucker_mod<-lmer(count~year*sampling_round*seed_coat+(1|site),
-                    data=AG_insects %>% filter(functional_group=="sucking"))
+# 2019
+AG_sucker_2019_mod<-lmer(count~seed_coat*as.factor(sampling_round)+(1|site),
+                    data=filter(AG_sucker, year == 2019))
+anova(AG_sucker_2019_mod)
+emmeans(AG_sucker_2019_mod,specs = pairwise ~ sampling_round) # round 4 higher than 3
 
-anova(AG_sucker_mod)
-summary(AG_sucker_mod)
-plot(AG_sucker_mod)
-hist(residuals(AG_sucker_mod))
+# 2020
+AG_sucker_2020_mod<-lmer(count~seed_coat*as.factor(sampling_round)+(1|site),
+                    data=filter(AG_sucker, year == 2020))
+anova(AG_sucker_2020_mod)
+emmeans(AG_sucker_2020_mod,specs = pairwise ~ sampling_round) # round 5 higher than others
+
+# 2021
+AG_sucker_2021_mod<-lmer(count~seed_coat*as.factor(sampling_round)+(1|site),
+                    data=filter(AG_sucker, year == 2021))
+anova(AG_sucker_2021_mod)
+emmeans(AG_sucker_2021_mod,specs = pairwise ~ sampling_round) # round 4 higher than 1
+
+
 ```
 
+## Predators
+```{r echo=FALSE}
+# subset data for analysis
+AG_pred <- target_insects %>%
+  filter(variety_name == "AG38X8" & functional_group =="predator")
 
+# summary table for graphs
+AG_pred_siteAvgDf<-target_insects %>%
+  filter(variety_name=="AG38X8" & functional_group == "predator") %>%
+  group_by(sampling_round,year,seed_coat) %>%
+  summarise(site_avg_preds=mean(count,na.rm=T),
+            se_avg_preds=sd(count,na.rm = T)/sqrt(n()))
+
+# count preds panels
+ggplot(AG_pred_siteAvgDf, aes(x=sampling_round,y=site_avg_preds,colour=seed_coat,group=seed_coat))+
+  facet_wrap(~year)+geom_point()+geom_line()+
+  geom_errorbar(aes(ymin=site_avg_preds-se_avg_preds,
+                    ymax=site_avg_preds+se_avg_preds),width=0.2)+
+  labs(title="AG38X8",y="Avg # Predators ± SE")  
+
+```
+```{r echo=TRUE}
+# 2019
+AG_pred_2019_mod<-lmer(count~seed_coat*as.factor(sampling_round)+(1|site),
+                    data=filter(AG_pred, year == 2019))
+anova(AG_pred_2019_mod)
+emmeans(AG_pred_2019_mod,specs = pairwise ~ sampling_round) # round 2 higher than 1
+
+# 2020
+AG_pred_2020_mod<-lmer(count~seed_coat*as.factor(sampling_round)+(1|site),
+                    data=filter(AG_pred, year == 2020))
+anova(AG_pred_2020_mod)
+emmeans(AG_pred_2020_mod,specs = pairwise ~ interaction(seed_coat,sampling_round)) # seedcoat and sampling round signfi
+
+# 2021
+AG_pred_2021_mod<-lmer(count~seed_coat*as.factor(sampling_round)+(1|site),
+                    data=filter(AG_pred, year == 2021))
+anova(AG_pred_2021_mod)
+emmeans(AG_pred_2021_mod,specs = pairwise ~ sampling_round) # round 2 and 3 higher than 1
+
+
+```
+
+## Predator:Herbivore Ratio
+```{r echo=FALSE}
+# subset data for analysis
+AG_pred_to_herb <- target_insects %>%
+  filter(variety_name == "AG38X8" & functional_group %in% c("predator","chewing","sucking")) %>%
+  pivot_wider(names_from = functional_group,values_from = count) %>%
+  mutate(predatorRatio=predator/na_if((chewing+sucking),0)) 
+
+# summary table for graphs
+AG_predRatio_siteAvgDf<-AG_pred_to_herb %>%
+  group_by(sampling_round,year,seed_coat) %>%
+  summarise(site_avg_predRatio=mean(predatorRatio,na.rm=T),
+            se_avg_predRatio=sd(predatorRatio,na.rm = T)/sqrt(n()))
+
+# predtator:herbivore panels
+ggplot(AG_predRatio_siteAvgDf, aes(x=sampling_round,y=site_avg_predRatio,colour=seed_coat,group=seed_coat))+
+  facet_wrap(~year)+geom_point()+geom_line()+
+  geom_errorbar(aes(ymin=site_avg_predRatio-se_avg_predRatio,
+                    ymax=site_avg_predRatio+se_avg_predRatio),width=0.2)+
+  labs(title="AG38X8",y="Average Predator:Herbivore ± SE")
+
+```
+```{r echo=TRUE}
+# 2019
+AG_predRatio_2019_mod<-lmer(predatorRatio~seed_coat*as.factor(sampling_round)+(1|site),
+                    data=filter(AG_pred_to_herb, year == 2019))
+anova(AG_predRatio_2019_mod)
+emmeans(AG_predRatio_2019_mod,specs = pairwise ~ sampling_round) # round 2 higher than others
+
+# 2020
+AG_predRatio_2020_mod<-lmer(predatorRatio~seed_coat*as.factor(sampling_round)+(1|site),
+                    data=filter(AG_pred_to_herb, year == 2020))
+anova(AG_predRatio_2020_mod)
+emmeans(AG_predRatio_2020_mod,specs = pairwise ~ interaction(seed_coat,sampling_round)) # interaction signif
+
+# 2021
+AG_predRatio_2021_mod<-lmer(predatorRatio~seed_coat*as.factor(sampling_round)+(1|site),
+                    data=filter(AG_pred_to_herb, year == 2021)) # fit singular
+anova(AG_predRatio_2021_mod)
+
+
+```
+
+## Total Insects
+```{r echo=FALSE}
+# subset data for analysis
+AG_insects <- insects %>%
+  filter(variety_name == "AG38X8")
+
+# summary table for graphs
+AG_insect_siteAvgDf<-insects %>%
+  filter(variety_name=="AG38X8") %>%
+  group_by(sampling_round,year,seed_coat) %>%
+  summarise(site_avg_insects=mean(count,na.rm=T),
+            se_avg_insects=sd(count,na.rm = T)/sqrt(n()))
+
+# count preds panels
+ggplot(AG_insect_siteAvgDf, aes(x=sampling_round,y=site_avg_insects,colour=seed_coat,group=seed_coat))+
+  facet_wrap(~year)+geom_point()+geom_line()+
+  geom_errorbar(aes(ymin=site_avg_insects-se_avg_insects,
+                    ymax=site_avg_insects+se_avg_insects),width=0.2)+
+  labs(title="AG38X8",y="Avg # Total Insects ± SE")  
+
+```
+```{r echo=TRUE}
+# 2019
+AG_insect_2019_mod<-lmer(count~seed_coat*as.factor(sampling_round)+(1|site),
+                    data=filter(AG_insects, year == 2019))
+anova(AG_insect_2019_mod)
+emmeans(AG_insect_2019_mod,specs = pairwise ~ sampling_round) # round 4 higher than 1
+
+# 2020
+AG_insect_2020_mod<-lmer(count~seed_coat*as.factor(sampling_round)+(1|site),
+                    data=filter(AG_insects, year == 2020))
+anova(AG_insect_2020_mod)
+emmeans(AG_insect_2020_mod,specs = pairwise ~ sampling_round) # round 5 higher than others
+
+# 2021
+AG_insect_2021_mod<-lmer(count~seed_coat*as.factor(sampling_round)+(1|site),
+                    data=filter(AG_insects, year == 2021))
+anova(AG_insect_2021_mod)
+emmeans(AG_insect_2021_mod,specs = pairwise ~ sampling_round) # round 2 higher than 1
+
+
+```
 
 ## Plant Biomass
 ```{r echo=FALSE}
@@ -231,7 +507,7 @@ AG_biomass<-biomass %>%
 # summary table for graphs
 AG_biomass_siteAvgDf<-biomass %>%
   filter(brandline=="AG38X8") %>%
-  group_by(site,year,brandline,seed_treat) %>%
+  group_by(year,seed_treat) %>%
   summarise(site_avg_plant_biomass=mean(plant_biomass_g,na.rm=T),
             se_plant_biomass=sd(plant_biomass_g,na.rm = T)/sqrt(n()),
             site_avg_beans=mean(beans_g,na.rm=T),
@@ -240,30 +516,64 @@ AG_biomass_siteAvgDf<-biomass %>%
             se_yield=sd(plot_yield_buac,na.rm = T)/sqrt(n()))
 
 # plant biomass panels
-ggplot(AG_biomass_siteAvgDf,aes(x=site,y=site_avg_plant_biomass,group=seed_treat,color=seed_treat))+
+ggplot(AG_biomass_siteAvgDf,aes(x=seed_treat,y=site_avg_plant_biomass,color=seed_treat))+
          geom_line(size=1.5)+
-         geom_point()+
+         geom_point(size=3)+
          geom_errorbar(aes(ymin=site_avg_plant_biomass-se_plant_biomass,
                            ymax=site_avg_plant_biomass+se_plant_biomass),width=0.2,size=1.5)+
          facet_wrap(~year,nrow=1)+
   labs(title="AG38X8",y="Avg Whole Plant Biomass (g) ± SE")
 ```
 
-```{r echo=TRUE}
-AG_biomass_mod<-lmer(plant_biomass_g~year*seed_treat+(1|site),data=AG_biomass)
 
-anova(AG_biomass_mod)
-summary(AG_biomass_mod)
-plot(AG_biomass_mod)
-hist(residuals(AG_biomass_mod))
+```{r echo=TRUE}
+# 2019
+AG_biomass_2019_mod<-lmer(plant_biomass_g~seed_treat+(1|site),data=filter(AG_biomass,year==2019))
+anova(AG_biomass_2019_mod)
+
+# 2020
+AG_biomass_2020_mod<-lmer(plant_biomass_g~seed_treat+(1|site),data=filter(AG_biomass,year==2020))
+anova(AG_biomass_2020_mod)
+
+# 2019
+AG_biomass_2021_mod<-lmer(plant_biomass_g~seed_treat+(1|site),data=filter(AG_biomass,year==2021))
+anova(AG_biomass_2021_mod)
+
+```
+
+## Beans per Plant
+```{r echo=FALSE}
+# beans per plant panels
+ggplot(AG_biomass_siteAvgDf,aes(x=seed_treat,y=site_avg_beans,color=seed_treat))+
+         geom_line(size=1.5)+
+         geom_point(size=3)+
+         geom_errorbar(aes(ymin=site_avg_beans-se_beans,
+                           ymax=site_avg_beans+se_beans),width=0.2,size=1.5)+
+         facet_wrap(~year,nrow=1)+
+  labs(title="AG38X8",y="Avg Beans per Plant (g) ± SE")
+```
+
+```{r echo=TRUE}
+# 2019
+AG_beans_2019_mod<-lmer(beans_g~seed_treat+(1|site),data=filter(AG_biomass,year==2019))
+anova(AG_beans_2019_mod)
+
+# 2020
+AG_beans_2020_mod<-lmer(beans_g~seed_treat+(1|site),data=filter(AG_biomass,year==2020))
+anova(AG_beans_2020_mod)
+
+# 2021
+AG_beans_2021_mod<-lmer(beans_g~seed_treat+(1|site),data=filter(AG_biomass,year==2021))
+anova(AG_beans_2021_mod)
+
 ```
 
 ## Trial Yield
 ```{r echo=FALSE}
 # trial yield panels
-ggplot(AG_biomass_siteAvgDf,aes(x=site,y=site_avg_yield,group=seed_treat,color=seed_treat))+
+ggplot(AG_biomass_siteAvgDf,aes(x=seed_treat,y=site_avg_yield,color=seed_treat))+
          geom_line(size=1.5)+
-         geom_point()+
+         geom_point(size=3)+
          geom_errorbar(aes(ymin=site_avg_yield-se_yield,
                            ymax=site_avg_yield+se_yield),width=0.2,size=1.5)+
          facet_wrap(~year,nrow=1)+
@@ -271,12 +581,10 @@ ggplot(AG_biomass_siteAvgDf,aes(x=site,y=site_avg_yield,group=seed_treat,color=s
 ```
 
 ```{r echo=TRUE}
-AG_yield_mod<-lmer(plot_yield_buac~year*seed_treat+(1|site),data=AG_biomass)
-
-anova(AG_yield_mod)
-summary(AG_yield_mod)
-plot(AG_yield_mod)
-hist(residuals(AG_yield_mod))
+# 2019
+AG_yield_2019_mod<-lmer(plot_yield_buac~seed_treat+(1|site),data=filter(AG_biomass,year==2019))
+anova(AG_yield_2019_mod)
+emmeans(AG_yield_2019_mod,specs = pairwise ~ seed_treat) # treated higher than untreated
 ```
 
 
@@ -294,46 +602,42 @@ SH_damage<-damage %>%
 # summary table for graphs
 SH_siteAvgDf<-damage %>%
   filter(variety_name=="SH3814LL") %>%
-  group_by(sampling.round,site,seed_coat) %>%
+  group_by(sampling.round,seed_coat) %>%
   summarise(site_avg_chew=mean(chew_pct,na.rm=T),
             se_avg_chew=sd(chew_pct,na.rm = T)/sqrt(n()),
             site_avg_stip=mean(stip_pct,na.rm=T),
             se_avg_stip=sd(stip_pct,na.rm=T)/sqrt(n()))
 
-# percent chew panels
+# percent chew 
 ggplot(SH_siteAvgDf, aes(x=sampling.round,y=site_avg_chew,colour=seed_coat,group=seed_coat))+
-  facet_wrap(~site,nrow=1)+geom_point()+geom_line()+
+  geom_point()+geom_line()+
   geom_errorbar(aes(ymin=site_avg_chew-se_avg_chew,
                     ymax=site_avg_chew+se_avg_chew),width=0.2)+
-  labs(title="SH3814LL",y="Avg % Chew ± SE")
+  labs(title="SH3814LL (2021)",y="Avg % Chew ± SE")
 ```
 
 ```{r echo=TRUE}
-SH_chew_mod<-lmer(chew_pct~year*sampling.round*seed_coat+(1|site),data=SH_damage)
+SH_chew_2021_mod<-lmer(chew_pct~seed_coat*as.factor(sampling.round)+(1|site),data=filter(SH_damage,year==2021))
+anova(SH_chew_2021_mod)
+emmeans(SH_chew_2021_mod,specs = pairwise ~ sampling.round) # round 1 higher than 2 and 2 lower than 4
 
-anova(SH_chew_mod)
-summary(SH_chew_mod)
-plot(SH_chew_mod)
-hist(residuals(SH_chew_mod))
 ```
 
 ## Stippling Damage
 ```{r echo=FALSE}
 # percent stippling panels
 ggplot(SH_siteAvgDf, aes(x=sampling.round,y=site_avg_stip,colour=seed_coat,group=seed_coat))+
-  facet_wrap(~site,nrow=1)+geom_point()+geom_line()+
+  geom_point()+geom_line()+
   geom_errorbar(aes(ymin=site_avg_stip-se_avg_stip,
                     ymax=site_avg_stip+se_avg_stip),width=0.2)+
-  labs(title="SH3814LL",y="Avg % Stippling ± SE")
+  labs(title="SH3814LL (2021)",y="Avg % Stippling ± SE")
 ```
 
 ```{r echo=TRUE}
-SH_stip_mod<-lmer(stip_pct~year*sampling.round*seed_coat+(1|site),data=SH_damage)
+SH_stip_2021_mod<-lmer(stip_pct~seed_coat*as.factor(sampling.round)+(1|site),data=filter(SH_damage,year==2021))
+anova(SH_stip_2021_mod)
+emmeans(SH_stip_2021_mod,specs = pairwise ~ sampling.round) # round 4 higher than others
 
-anova(SH_stip_mod)
-summary(SH_stip_mod)
-plot(SH_stip_mod)
-hist(residuals(SH_stip_mod))
 ```
 
 
@@ -346,30 +650,28 @@ SH_insects <- target_insects %>%
 # summary table for graphs
 SH_chewer_siteAvgDf<-target_insects %>%
   filter(variety_name=="SH3814LL" & functional_group == "chewing") %>%
-  group_by(sampling_round,site,year,seed_coat) %>%
+  group_by(sampling_round,seed_coat) %>%
   summarise(site_avg_chewers=mean(count,na.rm=T),
             se_avg_chewers=sd(count,na.rm = T)/sqrt(n()))
 
 # count chewers panels
 ggplot(SH_chewer_siteAvgDf, aes(x=sampling_round,y=site_avg_chewers,colour=seed_coat,group=seed_coat))+
-  facet_grid(rows=vars(year),cols=vars(site))+geom_point()+geom_line()+
+  geom_point()+geom_line()+
   geom_errorbar(aes(ymin=site_avg_chewers-se_avg_chewers,
                     ymax=site_avg_chewers+se_avg_chewers),width=0.2)+
-  labs(title="SH3814LL",y="Avg # Chewing Insects ± SE")  
+  labs(title="SH3814LL (2021)",y="Avg # Chewing Insects ± SE")  
 
 ```
 
-Note: angry model. 
+Note: fit is singular 
 ```{r echo=TRUE}
-SH_chewer_mod<-lmer(count~sampling_round*seed_coat+(1|site),
-                    data=SH_insects %>% filter(functional_group=="chewing"))
+SH_chewer_2021_mod<-lmer(count~seed_coat*as.factor(sampling_round)+(1|site),
+                    data=filter(SH_insects,functional_group=="chewing"))
+anova(SH_chewer_2021_mod)
+emmeans(SH_chewer_2021_mod,specs = pairwise ~ sampling_round) # round 3 higher than 1 and 4 
 
 hist(SH_insects$count[SH_insects$functional_group=="chewing"])
 
-# anova(SH_chewer_mod)
-# summary(SH_chewer_mod)
-# plot(SH_chewer_mod)
-# hist(residuals(SH_chewer_mod))
 ```
 
 
@@ -379,29 +681,125 @@ hist(SH_insects$count[SH_insects$functional_group=="chewing"])
 # summary table for graphs
 SH_sucker_siteAvgDf<-target_insects %>%
   filter(variety_name=="SH3814LL" & functional_group == "sucking") %>%
-  group_by(sampling_round,site,year,seed_coat) %>%
+  group_by(sampling_round,seed_coat) %>%
   summarise(site_avg_suckers=mean(count,na.rm=T),
             se_avg_suckers=sd(count,na.rm = T)/sqrt(n()))
 
 # count suckers panels
 ggplot(SH_sucker_siteAvgDf, aes(x=sampling_round,y=site_avg_suckers,colour=seed_coat,group=seed_coat))+
-  facet_grid(rows=vars(year),cols=vars(site))+geom_point()+geom_line()+
+  geom_point()+geom_line()+
   geom_errorbar(aes(ymin=site_avg_suckers-se_avg_suckers,
                     ymax=site_avg_suckers+se_avg_suckers),width=0.2)+
-  labs(title="SH3814LL",y="Avg # Sucking Insects ± SE")  
+  labs(title="SH3814LL (2021)",y="Avg # Sucking Insects ± SE")  
 
 ```
 
 
 ```{r echo=TRUE}
-SH_sucker_mod<-lmer(count~sampling_round*seed_coat+(1|site),
-                    data=SH_insects %>% filter(functional_group=="sucking"))
+SH_sucker_2021_mod<-lmer(count~seed_coat*as.factor(sampling_round)+(1|site),
+                    data=filter(SH_insects,functional_group=="sucking"))
+anova(SH_sucker_2021_mod)
+emmeans(SH_sucker_2021_mod,specs = pairwise ~ sampling_round) # round 4 higher than others
 
-anova(SH_sucker_mod)
-summary(SH_sucker_mod)
-plot(SH_sucker_mod)
-hist(residuals(SH_sucker_mod))
 ```
+
+
+## Predators
+```{r echo=FALSE}
+# subset data for analysis
+SH_pred <- target_insects %>%
+  filter(variety_name == "SH3814LL" & functional_group =="predator")
+
+# summary table for graphs
+SH_pred_siteAvgDf<-target_insects %>%
+  filter(variety_name=="SH3814LL" & functional_group == "predator") %>%
+  group_by(sampling_round,seed_coat) %>%
+  summarise(site_avg_preds=mean(count,na.rm=T),
+            se_avg_preds=sd(count,na.rm = T)/sqrt(n()))
+
+# count preds panels
+ggplot(SH_pred_siteAvgDf, aes(x=sampling_round,y=site_avg_preds,colour=seed_coat,group=seed_coat))+
+  geom_point()+geom_line()+
+  geom_errorbar(aes(ymin=site_avg_preds-se_avg_preds,
+                    ymax=site_avg_preds+se_avg_preds),width=0.2)+
+  labs(title="SH3814LL (2021)",y="Avg # Predators ± SE")  
+
+```
+```{r echo=TRUE}
+
+# 2021
+SH_pred_2021_mod<-lmer(count~seed_coat*as.factor(sampling_round)+(1|site),
+                    data=filter(SH_pred, year == 2021))
+anova(SH_pred_2021_mod)
+emmeans(SH_pred_2021_mod,specs = pairwise ~ sampling_round) # round 2 higher than 1
+
+
+```
+
+## Predator:Herbivore Ratio
+```{r echo=FALSE}
+# subset data for analysis
+SH_pred_to_herb <- target_insects %>%
+  filter(variety_name == "SH3814LL" & functional_group %in% c("predator","chewing","sucking")) %>%
+  pivot_wider(names_from = functional_group,values_from = count) %>%
+  mutate(predatorRatio=predator/na_if((chewing+sucking),0)) 
+
+# summary table for graphs
+SH_predRatio_siteAvgDf<-SH_pred_to_herb %>%
+  group_by(sampling_round,seed_coat) %>%
+  summarise(site_avg_predRatio=mean(predatorRatio,na.rm=T),
+            se_avg_predRatio=sd(predatorRatio,na.rm = T)/sqrt(n()))
+
+# predtator:herbivore panels
+ggplot(SH_predRatio_siteAvgDf, aes(x=sampling_round,y=site_avg_predRatio,colour=seed_coat,group=seed_coat))+
+  geom_point()+geom_line()+
+  geom_errorbar(aes(ymin=site_avg_predRatio-se_avg_predRatio,
+                    ymax=site_avg_predRatio+se_avg_predRatio),width=0.2)+
+  labs(title="SH3814LL (2021)",y="Average Predator:Herbivore ± SE")
+
+```
+```{r echo=TRUE}
+
+# 2021
+SH_predRatio_2021_mod<-lmer(predatorRatio~seed_coat*as.factor(sampling_round)+(1|site),
+                    data=filter(SH_pred_to_herb, year == 2021)) 
+anova(SH_predRatio_2021_mod)
+
+
+```
+
+## Total Insects
+```{r echo=FALSE}
+# subset data for analysis
+SH_insects <- insects %>%
+  filter(variety_name == "SH3814LL")
+
+# summary table for graphs
+SH_insect_siteAvgDf<-insects %>%
+  filter(variety_name=="SH3814LL") %>%
+  group_by(sampling_round,seed_coat) %>%
+  summarise(site_avg_insects=mean(count,na.rm=T),
+            se_avg_insects=sd(count,na.rm = T)/sqrt(n()))
+
+# count preds panels
+ggplot(SH_insect_siteAvgDf, aes(x=sampling_round,y=site_avg_insects,colour=seed_coat,group=seed_coat))+
+  geom_point()+geom_line()+
+  geom_errorbar(aes(ymin=site_avg_insects-se_avg_insects,
+                    ymax=site_avg_insects+se_avg_insects),width=0.2)+
+  labs(title="SH3814LL (2021)",y="Avg # Total Insects ± SE")  
+
+```
+```{r echo=TRUE}
+
+# 2021
+SH_insect_2021_mod<-lmer(count~seed_coat*as.factor(sampling_round)+(1|site),
+                    data=filter(SH_insects, year == 2021))
+anova(SH_insect_2021_mod)
+emmeans(SH_insect_2021_mod,specs = pairwise ~ sampling_round) # round 4 higher than 1 and 2
+
+
+```
+
 
 ## Plant Biomass
 ```{r echo=FALSE}
@@ -412,7 +810,7 @@ SH_biomass<-biomass %>%
 # summary table for graphs
 SH_biomass_siteAvgDf<-biomass %>%
   filter(brandline=="SH3814 LL") %>%
-  group_by(site,year,brandline,seed_treat) %>%
+  group_by(seed_treat) %>%
   summarise(site_avg_plant_biomass=mean(plant_biomass_g,na.rm=T),
             se_plant_biomass=sd(plant_biomass_g,na.rm = T)/sqrt(n()),
             site_avg_beans=mean(beans_g,na.rm=T),
@@ -421,41 +819,54 @@ SH_biomass_siteAvgDf<-biomass %>%
             se_yield=sd(plot_yield_buac,na.rm = T)/sqrt(n()))
 
 # plant biomass panels
-ggplot(SH_biomass_siteAvgDf,aes(x=site,y=site_avg_plant_biomass,group=seed_treat,color=seed_treat))+
+ggplot(SH_biomass_siteAvgDf,aes(x=seed_treat,y=site_avg_plant_biomass,color=seed_treat))+
          geom_line(size=1.5)+
-         geom_point()+
+         geom_point(size=3)+
          geom_errorbar(aes(ymin=site_avg_plant_biomass-se_plant_biomass,
                            ymax=site_avg_plant_biomass+se_plant_biomass),width=0.2,size=1.5)+
-         facet_wrap(~year,nrow=1)+
-  labs(title="SH3814 LL",y="Avg Whole Plant Biomass (g) +/- SE")
+         labs(title="SH3814 LL (2021)",y="Avg Whole Plant Biomass (g) +/- SE")
 ```
 
 ```{r echo=TRUE}
-SH_biomass_mod<-lmer(plant_biomass_g~seed_treat+(1|site),data=SH_biomass)
-
-anova(SH_biomass_mod)
-summary(SH_biomass_mod)
-plot(SH_biomass_mod)
-hist(residuals(SH_biomass_mod))
+SH_biomass_2021_mod<-lmer(plant_biomass_g~seed_treat+(1|site),data=filter(SH_biomass,year==2021))
+anova(SH_biomass_2021_mod)
+emmeans(SH_biomass_2021_mod,specs = pairwise ~ seed_treat) # untreated higher than treated
 ```
+## Beans per Plant
+```{r echo=FALSE}
+# beans per plant panels
+ggplot(SH_biomass_siteAvgDf,aes(x=seed_treat,y=site_avg_beans,color=seed_treat))+
+         geom_line(size=1.5)+
+         geom_point(size=3)+
+         geom_errorbar(aes(ymin=site_avg_beans-se_beans,
+                           ymax=site_avg_beans+se_beans),width=0.2,size=1.5)+
+         labs(title="SH3814LL (2021)",y="Avg Beans per Plant (g) ± SE")
+```
+
+```{r echo=TRUE}
+
+# 2021
+SH_beans_2021_mod<-lmer(beans_g~seed_treat+(1|site),data=filter(SH_biomass,year==2021))
+anova(SH_beans_2021_mod)
+emmeans(SH_beans_2021_mod,specs = pairwise ~ seed_treat) # untreated higher than treated
+
+```
+
+
 
 ## Trial Yield
 ```{r echo=FALSE}
 # trial yield panels
-ggplot(SH_biomass_siteAvgDf,aes(x=site,y=site_avg_yield,group=seed_treat,color=seed_treat))+
+ggplot(SH_biomass_siteAvgDf,aes(x=seed_treat,y=site_avg_yield,color=seed_treat))+
          geom_line(size=1.5)+
-         geom_point()+
+         geom_point(size=3)+
          geom_errorbar(aes(ymin=site_avg_yield-se_yield,
                            ymax=site_avg_yield+se_yield),width=0.2,size=1.5)+
-         facet_wrap(~year,nrow=1)+
-  labs(title="SH3814 LL",y="Avg Plot Yield (bu/ac) +/- SE")
+         labs(title="SH3814 LL (2021)",y="Avg Plot Yield (bu/ac) +/- SE")
 ```
 
 ```{r echo=TRUE}
-SH_yield_mod<-lmer(plot_yield_buac~seed_treat+(1|site),data=SH_biomass)
+SH_yield_2021_mod<-lmer(plot_yield_buac~seed_treat+(1|site),data=filter(SH_biomass,year==2021))
+anova(SH_yield_2021_mod)
 
-anova(SH_yield_mod)
-summary(SH_yield_mod)
-plot(SH_yield_mod)
-hist(residuals(SH_yield_mod))
 ```
