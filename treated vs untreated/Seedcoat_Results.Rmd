@@ -181,7 +181,7 @@ biomass_siteAvgDf<-biomass %>%
 
 # plant biomass panels
 ggplot(biomass_siteAvgDf,aes(x=seed_treat,y=site_avg_plant_biomass,color=seed_treat))+
-         geom_line(size=1.5)+
+         geom_line(linewidth=1.5)+
          geom_point(size=3)+
          geom_errorbar(aes(ymin=site_avg_plant_biomass-se_plant_biomass,
                            ymax=site_avg_plant_biomass+se_plant_biomass),width=0.2,size=1.5)+
@@ -309,18 +309,23 @@ AG_chewer_2020_mod<-glmer(count~seed_coat*as.factor(sampling_round)+(1|site),fam
 anova(AG_chewer_2020_mod)
 
 # 2021
-AG_chewer_2021_mod<-glmer(count~seed_coat*as.factor(sampling_round)+(1|site),family="poisson",
-                    data=filter(AG_chewer, year==2021))
-anova(AG_chewer_2021_mod)
+# AG_chewer_2021_mod<-glmer(count~seed_coat*as.factor(sampling_round)+(1|site),family="poisson",
+#                     data=filter(AG_chewer, year==2021))
+# AG_chewer_2021_mod<-lmer(count~seed_coat*as.factor(sampling_round)+(1|site),
+#                     data=filter(AG_chewer, year==2021))
+# AG_chewer_2021_mod<-glmer.nb(count~seed_coat*as.factor(sampling_round)+(1|site),
+#                     data=filter(AG_chewer, year==2021))
+# anova(AG_chewer_2021_mod)
 
 
 # code from Karin
-# fit_zinbinom1comp<-glmmTMB(t.flag~tree_div+tree_spp+(1|rep/tree_spp), data=dat, ziformula=~., family=nbinom1)
-# summary(fit_zinbinom1comp)
-# Anova(fit_zinbinom1comp)
+library(glmmTMB)
+fit_zinbinom1comp<-glmmTMB(count~seed_coat*as.factor(sampling_round)+(1|site), data=filter(AG_chewer, year==2021), ziformula=~., family=nbinom1)
+summary(fit_zinbinom1comp)
+Anova(fit_zinbinom1comp)
 # ##DHARMA CHECK###
 library(DHARMa)
-simulationOutput <- simulateResiduals(fittedModel = AG_chewer_2021_mod)
+simulationOutput <- simulateResiduals(fittedModel = fit_zinbinom1comp)
 plot(simulationOutput)
 testZeroInflation(simulationOutput)
 ```
@@ -479,7 +484,7 @@ ggplot(AG_insect_siteAvgDf, aes(x=sampling_round,y=site_avg_insects,colour=seed_
 ```{r echo=TRUE}
 # 2019
 AG_insect_2019_mod<-lmer(count~seed_coat*as.factor(sampling_round)+(1|site),
-                    data=filter(AG_insects, year == 2019))
+                    data=filter(AG_insects, year == 2019)) # fit is singular
 anova(AG_insect_2019_mod)
 emmeans(AG_insect_2019_mod,specs = pairwise ~ sampling_round) # round 4 higher than 1
 
@@ -663,10 +668,9 @@ ggplot(SH_chewer_siteAvgDf, aes(x=sampling_round,y=site_avg_chewers,colour=seed_
 
 ```
 
-Note: fit is singular 
 ```{r echo=TRUE}
 SH_chewer_2021_mod<-lmer(count~seed_coat*as.factor(sampling_round)+(1|site),
-                    data=filter(SH_insects,functional_group=="chewing"))
+                    data=filter(SH_insects,functional_group=="chewing")) # fit is singular
 anova(SH_chewer_2021_mod)
 emmeans(SH_chewer_2021_mod,specs = pairwise ~ sampling_round) # round 3 higher than 1 and 4 
 
