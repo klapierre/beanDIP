@@ -45,6 +45,21 @@ target_insects <- insects %>%
 # so sites display properly from west to east
 target_insects$site<-factor(target_insects$site, levels = c("K", "C", "W", "PH"))
 
+# add in weeks after planting info
+target_insects<-target_insects %>% mutate(weeks_ap=case_when((year==2019 & sampling_round==1) ~ 3,
+                                   (year==2019 & sampling_round==2) ~ 6,
+                                   (year==2019 & sampling_round==3) ~ 9,
+                                   (year==2019 & sampling_round==4) ~ 13,
+                                   (year==2020 & sampling_round==1) ~ 3,
+                                   (year==2020 & sampling_round==2) ~ 6,
+                                   (year==2020 & sampling_round==3) ~ 9,
+                                   (year==2020 & sampling_round==4) ~ 12,
+                                   (year==2020 & sampling_round==5) ~ 15,
+                                   (year==2021 & sampling_round==1) ~ 4,
+                                   (year==2021 & sampling_round==2) ~ 7,
+                                   (year==2021 & sampling_round==3) ~ 9,
+                                   (year==2021 & sampling_round==4) ~ 15
+                                   ))
 
 #### import damage data ####
 damage2019 <- read.csv('~/Dropbox/bean_dip_2018-2024/field trials/data/clean_data/clean_damage_2019.csv') %>% 
@@ -84,6 +99,21 @@ damage <- rbind(damage2019, damage2020, damage2021) %>% #bind all data together
 # so sites display properly from west to east
 damage$site<-factor(damage$site, levels = c("K", "C", "W", "PH"))
 
+# add in weeks after planting info
+damage<-damage %>% mutate(weeks_ap=case_when((year==2019 & sampling.round==1) ~ 3,
+                                   (year==2019 & sampling.round==2) ~ 6,
+                                   (year==2019 & sampling.round==3) ~ 9,
+                                   (year==2019 & sampling.round==4) ~ 13,
+                                   (year==2020 & sampling.round==1) ~ 3,
+                                   (year==2020 & sampling.round==2) ~ 6,
+                                   (year==2020 & sampling.round==3) ~ 9,
+                                   (year==2020 & sampling.round==4) ~ 12,
+                                   (year==2020 & sampling.round==5) ~ 15,
+                                   (year==2021 & sampling.round==1) ~ 4,
+                                   (year==2021 & sampling.round==2) ~ 7,
+                                   (year==2021 & sampling.round==3) ~ 9,
+                                   (year==2021 & sampling.round==4) ~ 15
+                                   ))
 
 #### import biomass data ####
 
@@ -103,7 +133,7 @@ biomass$site<-factor(biomass$site, levels = c("K", "C", "W", "PH"))
 ```{r echo=FALSE}
 # summary table for graphs
 damage_siteAvgDf<-damage %>%
-  group_by(sampling.round,year,seed_coat) %>%
+  group_by(sampling.round,weeks_ap,year,seed_coat) %>%
   summarise(site_avg_chew=mean(chew_pct,na.rm=T),
             se_avg_chew=sd(chew_pct,na.rm = T)/sqrt(n()),
             site_avg_stip=mean(stip_pct,na.rm=T),
@@ -153,7 +183,7 @@ emmeans(chew_2021_mod,specs = pairwise ~ sampling.round) # 1 higher than 2 or 3,
 # summary table for graphs
 chewer_siteAvgDf<-target_insects %>%
   filter(functional_group == "chewing") %>%
-  group_by(sampling_round,year,seed_coat) %>%
+  group_by(sampling_round,weeks_ap,year,seed_coat) %>%
   summarise(site_avg_chewers=mean(count,na.rm=T),
             se_avg_chewers=sd(count,na.rm = T)/sqrt(n()))
 
@@ -204,51 +234,79 @@ plot(chewer_2020_mod2)
 
 # 2021 add random effect for variety
 ggplot(data=filter(chewer,year==2021),aes(x=count))+geom_histogram(binwidth = 1)
-# using poisson distribution because counts
-# chewer_2021_mod<-glmer(count~seed_coat*as.factor(sampling_round)+(1|site)+(1|variety_name),family="poisson",
-#                   data=filter(chewer, year==2021))
-# anova(chewer_2021_mod)
-# plot(chewer_2021_mod)
 
-# not poisson because glmer results complicate reporting and residuals look no worse (is singular though)
+# not poisson because glmer results complicate reporting and residuals look no worse - singular though
 chewer_2021_mod2<-lmer(count~seed_coat*as.factor(sampling_round)+(1|site)+(1|variety_name),data=filter(chewer,year==2021))
 anova(chewer_2021_mod2)
 plot(chewer_2021_mod2)
 
+# #singularity check
+# summary(chewer_2021_mod2)
+# ranef(chewer_2021_mod2) #zeros= bad
+# # try running as fixed effects instead of random
+# chewer_2021_mod3<-lm(count~seed_coat*as.factor(sampling_round)+variety_name*seed_coat+site,data=filter(chewer,year==2021))
+# anova(chewer_2021_mod3) # sampling round is all that matters
+# summary(chewer_2021_mod3)
+# 
+# # using poisson distribution because counts
+# chewer_2021_mod<-glmer(count~seed_coat*as.factor(sampling_round)+(1|site)+(1|variety_name),family="poisson",
+#                   data=filter(chewer, year==2021))
+# anova(chewer_2021_mod)
+# plot(chewer_2021_mod)
+# summary(chewer_2021_mod)
+# ranef(chewer_2021_mod)
+# 
+# # force glmer to give result- same- sampling round only signif
+# library(car)
+# Anova(chewer_2021_mod,type=3)
+# 
+# # try removing outlier - still singular
+# no_out<-chewer %>% 
+#   filter(year==2021 & count <50)
+# # OG lmer - same result, sampling round only signif
+# chewer_2021_mod4<-lmer(count~seed_coat*as.factor(sampling_round)+(1|site)+(1|variety_name),data=no_out)
+# anova(chewer_2021_mod4)
+# plot(chewer_2021_mod4)
 
 ```
 
 # Combined Chewing Figure
 ```{r eval=FALSE, include=FALSE}
-chewer_facet<-
-  ggplot(chewer_siteAvgDf, aes(x=sampling_round,y=site_avg_chewers,shape=seed_coat,linetype=seed_coat,group=seed_coat))+
-  facet_wrap(~year)+geom_point(size=2)+scale_shape_manual(values = c(24,19),labels=c("Treated","Untreated"))+
-  geom_line()+scale_linetype_manual(values=c("dashed","solid"),labels=c("Treated","Untreated"))+
-  geom_errorbar(aes(ymin=site_avg_chewers-se_avg_chewers,
+color_chewer_facet<-
+  ggplot(chewer_siteAvgDf, aes(x=weeks_ap,y=site_avg_chewers,shape=seed_coat,color=seed_coat,group=seed_coat,
+                               linetype=seed_coat,))+
+  facet_wrap(~year)+geom_point(size=2)+geom_line()+geom_errorbar(aes(ymin=site_avg_chewers-se_avg_chewers,
                     ymax=site_avg_chewers+se_avg_chewers),width=0.2)+
+  scale_shape_manual(values = c(17,19),labels=c("Treated","Untreated"))+
+  scale_color_manual(values=c("#f1a340","#998ec3"),labels=c("Treated","Untreated"))+
+  scale_linetype_manual(values=c("solid","dashed"),labels=c("Treated","Untreated"))+
   labs(y="Chewing Insects\nAvg # ± SE",x="",
-         shape="Seed Coat",linetype="Seed Coat")+
+         shape="Seed Coat",color="Seed Coat",linetype="Seed Coat")+
   theme_bw() + theme(panel.grid.minor = element_blank(),
                      strip.text = element_text(face="bold"),
-                     plot.margin = unit(c(0.5,0,0,0), 'lines'))
+                     plot.margin = unit(c(0.5,0,0,0), 'lines'))+scale_x_continuous(breaks=c(3,6,9,12,15))
+color_chewer_facet
 
-chewing_facet<-
-  ggplot(damage_siteAvgDf, aes(x=sampling.round,y=site_avg_chew,shape=seed_coat,linetype=seed_coat,group=seed_coat))+
-  facet_wrap(~year)+geom_point(size=2)+scale_shape_manual(values = c(24,19),labels=c("Treated","Untreated"))+
-  geom_line()+scale_linetype_manual(values=c("dashed","solid"),labels=c("Treated","Untreated"))+
-    geom_errorbar(aes(ymin=site_avg_chew-se_avg_chew,
+color_chewing_facet<-
+  ggplot(damage_siteAvgDf, aes(x=weeks_ap,y=site_avg_chew,shape=seed_coat,color=seed_coat,group=seed_coat,
+                               linetype = seed_coat))+geom_line()+facet_wrap(~year)+geom_point(size=2)+
+  geom_errorbar(aes(ymin=site_avg_chew-se_avg_chew,
                       ymax=site_avg_chew+se_avg_chew),width=0.2)+
-    labs(y="Chewing Damage\nAvg % ± SE",x="Sampling Round",
-         shape="Seed Coat",linetype="Seed Coat") + 
+  scale_shape_manual(values = c(17,19),labels=c("Treated","Untreated"))+
+  scale_color_manual(values=c("#f1a340","#998ec3"),labels=c("Treated","Untreated"))+
+  scale_linetype_manual(values=c("solid","dashed"),labels=c("Treated","Untreated"))+
+  labs(y="Chewing Damage\nAvg % ± SE",x="Weeks After Planting",
+         shape="Seed Coat",color="Seed Coat",linetype="Seed Coat") + 
     theme_bw() + theme(panel.grid.minor = element_blank(),
                      strip.text = element_text(face="bold"),
-                     plot.margin = unit(c(0,0,0,0), 'lines'))
+                     plot.margin = unit(c(0,0,0,0), 'lines'))+scale_x_continuous(breaks=c(3,6,9,12,15))
+color_chewing_facet
 
-chew_figure <- ggarrange(chewer_facet, chewing_facet, 
+color_chew_figure <- ggarrange(color_chewer_facet, color_chewing_facet, 
                     labels = c("A", "B"),
                     ncol = 1, nrow = 2,common.legend = TRUE, legend = "bottom",hjust=-1,vjust=1,align = c("v"))
-chew_figure
-ggsave("C:\\Users\\kmcgurri\\Dropbox\\bean_dip_2018-2024\\manuscripts\\field trial seed coats\\figures\\chew_figure.tiff",plot=chew_figure,width=6,height=4,units=c("in"))
+color_chew_figure
+ggsave("C:\\Users\\kmcgurri\\Dropbox\\bean_dip_2018-2024\\manuscripts\\field trial seed coats\\figures\\color_chew_figure.tiff",plot=color_chew_figure,width=6,height=4,units=c("in"))
 
 ```
 
@@ -299,7 +357,7 @@ emmeans(stip_2021_mod,specs = pairwise ~ sampling.round) # 4 higher than others
 # summary table for graphs
 sucker_siteAvgDf<-target_insects %>%
   filter(functional_group == "sucking") %>%
-  group_by(sampling_round,year,seed_coat) %>%
+  group_by(sampling_round,weeks_ap,year,seed_coat) %>%
   summarise(site_avg_suckers=mean(count,na.rm=T),
             se_avg_suckers=sd(count,na.rm = T)/sqrt(n()))
 
@@ -336,10 +394,10 @@ plot(sucker_2019_mod2)
 # 2020
 ggplot(data=filter(sucker,year==2020),aes(x=count))+geom_histogram(binwidth = 1)
 # using poisson distribution because counts
-sucker_2020_mod<-glmer(count~seed_coat*as.factor(sampling_round)+(1|site),family="poisson",
-                    data=filter(sucker, year==2020))
-anova(sucker_2020_mod)
-plot(sucker_2020_mod)
+# sucker_2020_mod<-glmer(count~seed_coat*as.factor(sampling_round)+(1|site),family="poisson",
+#                     data=filter(sucker, year==2020))
+# anova(sucker_2020_mod)
+# plot(sucker_2020_mod)
 
 # not poisson because glmer results complicate reporting and residuals look no worse
 sucker_2020_mod2<-lmer(count~seed_coat*as.factor(sampling_round)+(1|site),data=filter(sucker,year==2020))
@@ -363,35 +421,41 @@ plot(sucker_2021_mod2)
 
 # Combined Stippling Figure
 ```{r eval=FALSE, include=FALSE}
-sucker_facet<-
-  ggplot(sucker_siteAvgDf, aes(x=sampling_round,y=site_avg_suckers,shape=seed_coat,linetype=seed_coat,group=seed_coat))+
-  facet_wrap(~year)+geom_point(size=2)+scale_shape_manual(values = c(24,19),labels=c("Treated","Untreated"))+
-  geom_line()+scale_linetype_manual(values=c("dashed","solid"),labels=c("Treated","Untreated"))+
-  geom_errorbar(aes(ymin=site_avg_suckers-se_avg_suckers,
+color_sucker_facet<-
+  ggplot(sucker_siteAvgDf, aes(x=weeks_ap,y=site_avg_suckers,shape=seed_coat,color=seed_coat,group=seed_coat,
+                               linetype=seed_coat,))+
+  facet_wrap(~year)+geom_point(size=2)+geom_line()+geom_errorbar(aes(ymin=site_avg_suckers-se_avg_suckers,
                     ymax=site_avg_suckers+se_avg_suckers),width=0.2)+
+  scale_shape_manual(values = c(17,19),labels=c("Treated","Untreated"))+
+  scale_color_manual(values=c("#f1a340","#998ec3"),labels=c("Treated","Untreated"))+
+  scale_linetype_manual(values=c("solid","dashed"),labels=c("Treated","Untreated"))+
   labs(y="Sucking Insects\nAvg # ± SE",x="",
-         shape="Seed Coat",linetype="Seed Coat")+
+         shape="Seed Coat",color="Seed Coat",linetype="Seed Coat")+
   theme_bw() + theme(panel.grid.minor = element_blank(),
                      strip.text = element_text(face="bold"),
-                     plot.margin = unit(c(0.5,0,0,0), 'lines'))
+                     plot.margin = unit(c(0.5,0,0,0), 'lines'))+scale_x_continuous(breaks=c(3,6,9,12,15))
+color_sucker_facet
 
-stippling_facet<-
-  ggplot(damage_siteAvgDf, aes(x=sampling.round,y=site_avg_stip,shape=seed_coat,linetype=seed_coat,group=seed_coat))+
-  facet_wrap(~year)+geom_point(size=2)+scale_shape_manual(values = c(24,19),labels=c("Treated","Untreated"))+
-  geom_line()+scale_linetype_manual(values=c("dashed","solid"),labels=c("Treated","Untreated"))+
-    geom_errorbar(aes(ymin=site_avg_stip-se_avg_chew,
-                      ymax=site_avg_stip+se_avg_chew),width=0.2)+
-    labs(y="Stippling Damage\nAvg % ± SE",x="Sampling Round",
-         shape="Seed Coat",linetype="Seed Coat") + 
+color_stippling_facet<-
+  ggplot(damage_siteAvgDf, aes(x=weeks_ap,y=site_avg_stip,shape=seed_coat,color=seed_coat,group=seed_coat,
+                               linetype = seed_coat))+geom_line()+facet_wrap(~year)+geom_point(size=2)+
+  geom_errorbar(aes(ymin=site_avg_stip-se_avg_stip,
+                      ymax=site_avg_stip+se_avg_stip),width=0.2)+
+  scale_shape_manual(values = c(17,19),labels=c("Treated","Untreated"))+
+  scale_color_manual(values=c("#f1a340","#998ec3"),labels=c("Treated","Untreated"))+
+  scale_linetype_manual(values=c("solid","dashed"),labels=c("Treated","Untreated"))+
+  labs(y="Stippling Damage\nAvg % ± SE",x="Weeks After Planting",
+         shape="Seed Coat",color="Seed Coat",linetype="Seed Coat") + 
     theme_bw() + theme(panel.grid.minor = element_blank(),
                      strip.text = element_text(face="bold"),
-                     plot.margin = unit(c(0,0,0,0), 'lines'))
+                     plot.margin = unit(c(0,0,0,0), 'lines'))+scale_x_continuous(breaks=c(3,6,9,12,15))
+color_stippling_facet
 
-stip_figure <- ggarrange(sucker_facet, stippling_facet, 
+color_stip_figure <- ggarrange(color_sucker_facet, color_stippling_facet, 
                     labels = c("A", "B"),
                     ncol = 1, nrow = 2,common.legend = TRUE, legend = "bottom",hjust=-1,vjust=1,align = c("v"))
-stip_figure
-ggsave("C:\\Users\\kmcgurri\\Dropbox\\bean_dip_2018-2024\\manuscripts\\field trial seed coats\\figures\\stip_figure.tiff",plot=stip_figure,width=6,height=4,units=c("in"))
+color_stip_figure
+ggsave("C:\\Users\\kmcgurri\\Dropbox\\bean_dip_2018-2024\\manuscripts\\field trial seed coats\\figures\\color_stip_figure.tiff",plot=color_stip_figure,width=6,height=4,units=c("in"))
 
 ```
 
@@ -481,34 +545,41 @@ emmeans(beans_2021_mod,specs = pairwise ~ seed_treat) # treated is lower
 ```
 # Combined Harvest Figure
 ```{r eval=FALSE, include=FALSE}
-biomass_facet<-
-  ggplot(biomass_siteAvgDf,aes(x=rev(seed_treat),y=site_avg_plant_biomass,shape=rev(seed_treat),linetype=rev(seed_treat)))+
-         geom_line()+ scale_linetype_manual(values=c("solid","dotdash"),labels=c("Untreated","Treated"))+
-  geom_point(size=3)+scale_shape_manual(values = c(19,24),labels=c("Untreated","Treated"))+
+color_biomass_facet<-
+  ggplot(biomass_siteAvgDf,aes(x=rev(seed_treat),y=site_avg_plant_biomass,
+                               shape=rev(seed_treat),linetype=rev(seed_treat),color=rev(seed_treat)))+
+         geom_line()+ geom_point(size=3)+ facet_wrap(~year,nrow=1)+
+  scale_linetype_manual(values=c("dashed","solid"),labels=c("Untreated","Treated"))+
+  scale_shape_manual(values = c(19,17),labels=c("Untreated","Treated"))+
+  scale_color_manual(values=c("#998ec3","#f1a340"),labels=c("Untreated","Treated"))+
          geom_errorbar(aes(ymin=site_avg_plant_biomass-se_plant_biomass,
                            ymax=site_avg_plant_biomass+se_plant_biomass),width=0.2)+
-         facet_wrap(~year,nrow=1)+
+         
   labs(y="Whole Biomass (g)\nAvg ± SE",x="")+
   scale_x_discrete(labels=c("Untreated","Treated")) +
   theme_bw() + theme(panel.grid.minor = element_blank(),
                      strip.text = element_text(face="bold",size=rel(1.5)),legend.position = "none")
+color_biomass_facet
 
-beans_facet<-
-  ggplot(biomass_siteAvgDf,aes(x=rev(seed_treat),y=site_avg_beans,shape=rev(seed_treat),linetype=rev(seed_treat)))+
-         geom_line()+ scale_linetype_manual(values=c("solid","dotdash"),labels=c("Untreated","Treated"))+
-  geom_point(size=3)+scale_shape_manual(values = c(19,24),labels=c("Untreated","Treated"))+
+color_beans_facet<-
+  ggplot(biomass_siteAvgDf,aes(x=rev(seed_treat),y=site_avg_beans,
+                               shape=rev(seed_treat),linetype=rev(seed_treat),color=rev(seed_treat)))+
+         geom_line()+ geom_point(size=3)+ facet_wrap(~year,nrow=1)+
+  scale_linetype_manual(values=c("dashed","solid"),labels=c("Untreated","Treated"))+
+  scale_shape_manual(values = c(19,17),labels=c("Untreated","Treated"))+
+  scale_color_manual(values=c("#998ec3","#f1a340"),labels=c("Untreated","Treated"))+
          geom_errorbar(aes(ymin=site_avg_beans-se_beans,
                            ymax=site_avg_beans+se_beans),width=0.2)+
-         facet_wrap(~year,nrow=1)+
-  labs(y="Beans per Plant (g)\nAvg ± SE",x="Seed Coat")+
+  labs(y="Beans per Plant (g)\nAvg ± SE",x="")+
   scale_x_discrete(labels=c("Untreated","Treated")) +
   theme_bw() + theme(panel.grid.minor = element_blank(),
                      strip.text = element_text(face="bold",size=rel(1.5)),legend.position = "none")
+color_beans_facet
 
-harvest_figure <- ggarrange(biomass_facet, beans_facet, 
+color_harvest_figure <- ggarrange(color_biomass_facet, color_beans_facet, 
                     labels = c("A", "B"),
                     ncol = 1, nrow = 2, legend = "none",hjust=-1,vjust=1,align = c("v"))
-harvest_figure
-ggsave("C:\\Users\\kmcgurri\\Dropbox\\bean_dip_2018-2024\\manuscripts\\field trial seed coats\\figures\\harvest_figure.tiff",plot=harvest_figure,width=6,height=4,units=c("in"))
+color_harvest_figure
+ggsave("C:\\Users\\kmcgurri\\Dropbox\\bean_dip_2018-2024\\manuscripts\\field trial seed coats\\figures\\color_harvest_figure.tiff",plot=color_harvest_figure,width=6,height=4,units=c("in"))
 
 ```
