@@ -1,0 +1,1273 @@
+---
+title: "beanDIP2023_GHcomprehensive"
+author: "Brendan Randall"
+date: "2025-02-14"
+output: word_document
+---
+
+```{r setup, include=FALSE}
+
+```
+
+
+```{r load libraries}
+
+# Load libraries ####
+
+library(lme4)
+library(ggplot2)
+library(RColorBrewer)
+library(dplyr)
+library(lmerTest)
+library(ggpubr)
+library(extrafont)
+library(tidyr)
+library(emmeans)
+library(car)
+library(directlabels)
+library(vegan)
+library(iNEXT)
+library(tidyverse)
+library(patchwork)
+library(cowplot)
+
+```
+# list of dataframes
+
+
+```{r }
+
+
+knitr::opts_knit$set(root.dir = "C:\\Users\\brandall\\Dropbox\\bean_dip_2018-2024\\greenhouse trials\\beanDIP 2023 Diversity Greenhouse Experiment\\Datasheets")
+getwd()
+
+#Reference dataframe
+reference <- read.csv('Reference/div2023_reference.csv')
+
+#List of predictor variable dataframes
+caterpillar_weights <- read.csv('Feeding Trial/div2023_feedingtrial_clean.csv')
+herbivory <- read.csv('Feeding Trial/div2023_leafbyte_clean.csv')
+punch <- read.csv('Leaf Traits/clean data/div2023_leafpunch_clean.csv')
+photosynq <- read.csv('Leaf Traits/clean data/div2023_photosynqaugust_clean.csv')
+trichomes <- read.csv('Leaf Traits/clean data/div2023_trichomes_clean.csv')
+biomass <- read.csv('Harvest/div2023_harvest_clean.csv')
+
+```
+
+# Read in dataframes
+
+```{r read in dataframes}
+
+reference <- read.csv('Reference/div2023_reference.csv')
+
+weightdata <- reference %>%
+  left_join(read.csv('Feeding Trial/div2023_feedingtrial_clean.csv')) %>%
+  filter(culture_id != "control") %>%
+  filter(!is.na(relative_growth_rate))
+
+herbivorydata <- reference %>%
+  left_join(read.csv('Feeding Trial/div2023_leafbyte_clean.csv')) %>%
+  filter(culture_id != "control") %>%
+  filter(!is.na(percent_consumed))
+
+punchdata <- reference %>%
+  left_join(read.csv('Leaf Traits/clean data/div2023_leafpunch_clean.csv')) %>%
+  filter(culture_id != "control") %>%
+  filter(!is.na(SLA))
+
+photosynqdata <- reference %>%
+  left_join(read.csv('Leaf Traits/clean data/div2023_photosynqaugust_clean.csv')) %>%
+  filter(culture_id != "control") %>%
+  filter(!is.na(Phi2))
+
+trichomedata <- reference %>%
+  left_join(read.csv('Leaf Traits/clean data/div2023_trichomes_clean.csv')) %>%
+  filter(culture_id !="control") %>%
+  filter(!is.na(trichome_density))
+
+harvestdata <- reference %>%
+  left_join(read.csv('Harvest/div2023_harvest_clean.csv')) %>%
+  filter(culture_id != "control") %>%
+  filter(!is.na(totbio.g))
+
+```
+
+```{r subset dataframes into separate monoculture, biculture, and polyculture dataframes}
+
+```
+
+# Convert fixed effects in dataframes
+
+```{r }
+######Strain diversity is coded as a numeric. There are more two categories, and given our prediction that strain diversity would change traits along a numeric gradient, and that the number does matter, we can code as a numeric. 
+
+###Caterpillar weight dataframe
+weightdata$bench <- as.factor(weightdata$bench)
+weightdata$block <- as.factor(weightdata$block)
+weightdata$sub_block <- as.factor(weightdata$sub_block)
+weightdata$tray_number <- as.factor(weightdata$tray_number)
+weightdata$tray_position <- as.factor(weightdata$tray_position)
+weightdata$water_regimen <- as.factor(weightdata$water_regimen)
+weightdata$herb_treat <- as.factor(weightdata$herb_treat)
+weightdata$strain_treatment <- as.factor(weightdata$strain_treatment)
+weightdata$strain_diversity <- as.numeric(weightdata$strain_diversity)
+weightdata$performance_treatment <- as.factor(weightdata$performance_treatment)
+weightdata$culture_id <- as.factor(weightdata$culture_id)
+
+#Herbivory dataframe
+herbivorydata$bench <- as.character(herbivorydata$bench)
+herbivorydata$sub_block <- as.factor(herbivorydata$sub_block)
+herbivorydata$block <- as.factor(herbivorydata$block)
+herbivorydata$tray_number <- as.factor(herbivorydata$tray_number)
+herbivorydata$tray_position <- as.factor(herbivorydata$tray_position)
+herbivorydata$water_regimen <- as.factor(herbivorydata$water_regimen)
+herbivorydata$herb_treat <- as.factor(herbivorydata$herb_treat)
+herbivorydata$strain_treatment <- as.factor(herbivorydata$strain_treatment)
+herbivorydata$strain_diversity <- as.numeric(herbivorydata$strain_diversity)
+herbivorydata$performance_treatment <- as.factor(herbivorydata$performance_treatment)
+
+#Leaf punch dataframe
+punchdata$bench <- as.character(punchdata$bench)
+punchdata$block <- as.factor(punchdata$block)
+punchdata$sub_block <- as.factor(punchdata$sub_block)
+punchdata$tray_number <- as.factor(punchdata$tray_number)
+punchdata$tray_position <- as.factor(punchdata$tray_position)
+punchdata$water_regimen <- as.factor(punchdata$water_regimen)
+punchdata$herb_treat <- as.factor(punchdata$herb_treat)
+punchdata$strain_treatment <- as.factor(punchdata$strain_treatment)
+punchdata$strain_diversity <- as.numeric(punchdata$strain_diversity)
+punchdata$performance_treatment <- as.factor(punchdata$performance_treatment)
+
+#Trichome dataframe
+trichomedata$bench <- as.character(trichomedata$bench)
+trichomedata$block <- as.factor(trichomedata$block)
+trichomedata$sub_block <- as.factor(trichomedata$sub_block)
+trichomedata$tray_number <- as.factor(trichomedata$tray_number)
+trichomedata$tray_position <- as.factor(trichomedata$tray_position)
+trichomedata$water_regimen <- as.factor(trichomedata$water_regimen)
+trichomedata$herb_treat <- as.factor(trichomedata$herb_treat)
+trichomedata$strain_treatment <- as.factor(trichomedata$strain_treatment)
+trichomedata$strain_diversity <- as.numeric(trichomedata$strain_diversity)
+trichomedata$performance_treatment <- as.factor(trichomedata$performance_treatment)
+
+#Photosynq dataframe
+photosynqdata$bench <- as.character(photosynqdata$bench)
+photosynqdata$block <- as.factor(photosynqdata$block)
+photosynqdata$sub_block <- as.factor(photosynqdata$sub_block)
+photosynqdata$tray_number <- as.factor(photosynqdata$tray_number)
+photosynqdata$tray_position <- as.factor(photosynqdata$tray_position)
+photosynqdata$water_regimen <- as.factor(photosynqdata$water_regimen)
+photosynqdata$herb_treat <- as.factor(photosynqdata$herb_treat)
+photosynqdata$strain_treatment <- as.factor(photosynqdata$strain_treatment)
+photosynqdata$strain_diversity <- as.numeric(photosynqdata$strain_diversity)
+photosynqdata$performance_treatment <- as.factor(photosynqdata$performance_treatment)
+
+#Harvest dataframe
+harvestdata$bench <- as.character(harvestdata$bench)
+harvestdata$block <- as.factor(harvestdata$block)
+harvestdata$sub_block <- as.factor(harvestdata$sub_block)
+harvestdata$tray_number <- as.factor(harvestdata$tray_number)
+harvestdata$tray_position <- as.factor(harvestdata$tray_position)
+harvestdata$water_regimen <- as.factor(harvestdata$water_regimen)
+harvestdata$herb_treat <- as.factor(harvestdata$herb_treat)
+harvestdata$strain_treatment <- as.factor(harvestdata$strain_treatment)
+harvestdata$strain_diversity <- as.numeric(harvestdata$strain_diversity)
+harvestdata$performance_treatment <- as.factor(harvestdata$performance_treatment)
+harvestdata$nodule_count <- as.numeric(harvestdata$nodule_count)
+
+```
+
+# Caterpillar GLMMs
+
+```{r }
+
+###Caterpillar RGR. Significant main effect of watering and interaction. 
+
+rgr_model <- lmer(relative_growth_rate ~ water_regimen + strain_diversity + water_regimen:strain_diversity +(1|block), data=weightdata)
+summary(rgr_model)
+ranef(rgr_model)
+anova(rgr_model)
+plot(rgr_model)
+hist(residuals(rgr_model))
+
+rgr_model_trt <- lmer(relative_growth_rate ~ water_regimen + strain_treatment + water_regimen:strain_treatment +(1|block) + (1|performance_treatment), data=weightdata)
+summary(rgr_model_trt)
+ranef(rgr_model_trt)
+anova(rgr_model_trt)
+plot(rgr_model_trt)
+hist(residuals(rgr_model_trt))
+
+#Compare estimated marginal means. When I try it this way, it doesn't work with strain diversity as a numeric. Difference between watering is significant in monocultures, but less in bicultures and polycultures. Estimate marginal means for well-watered and droughted groups for each diversity level. #
+
+weightdata$strain_diversity_factor <- factor(weightdata$strain_diversity, 
+                                     levels = c(1, 2, 4), 
+                                     ordered = TRUE)
+
+rgr_model_factor <- lmer(relative_growth_rate ~ water_regimen + strain_diversity_factor + water_regimen:strain_diversity_factor +(1|block), data=weightdata)
+summary(rgr_model_factor)
+ranef(rgr_model_factor)
+anova(rgr_model_factor)
+plot(rgr_model_factor)
+hist(residuals(rgr_model_factor))
+
+emm_rgr <- emmeans(rgr_model_factor, pairwise ~ water_regimen|strain_diversity_factor)
+emm_rgr
+
+#Change contrasts to look at differences between diversity levels
+emmeans_results <- emmeans(rgr_model_factor, ~ strain_diversity_factor * water_regimen)
+
+# View the emmeans table
+emmeans_results
+
+# Run pairwise comparison specifically for watering treatment levels only
+pairs(emmeans_results, by = "water_regimen")
+
+#Consumed leaf area (cm^2) Watering significant. NS interaction very similar pattern to the RGR interaction  
+cons_herbivory_model <- lmer(consumedarea.cm2 ~ water_regimen + strain_diversity + water_regimen:strain_diversity + (1|block), data=herbivorydata)
+summary(cons_herbivory_model)
+ranef(cons_herbivory_model)
+anova(cons_herbivory_model)
+plot(cons_herbivory_model)
+hist(residuals(cons_herbivory_model))
+
+#Consume leaf area model with strain diversity as factor to do emmeans analysis
+herbivorydata$strain_diversity_factor <- factor(herbivorydata$strain_diversity, 
+                                     levels = c(1, 2, 4), 
+                                     ordered = TRUE)
+
+herb_model_factor <- lmer(consumedarea.cm2 ~ water_regimen + strain_diversity_factor + water_regimen:strain_diversity_factor +(1|block), data=herbivorydata)
+summary(herb_model_factor)
+ranef(herb_model_factor)
+anova(herb_model_factor)
+plot(herb_model_factor)
+hist(residuals(herb_model_factor))
+
+emm_herb <- emmeans(herb_model_factor, pairwise ~ water_regimen|strain_diversity_factor)
+emm_herb
+
+#Change contrasts to look at differences between diversity levels
+emmeans_herbresults <- emmeans(herb_model_factor, ~ strain_diversity_factor * water_regimen)
+
+# View the emmeans table
+emmeans_herbresults
+
+# Run pairwise comparison specifically for watering treatment levels only
+pairs(emmeans_herbresults, by = "water_regimen")
+
+### Percent leaf area removed. Nothing significant with strain diversity as numeric. 
+percent_herbivory_model <- lmer(percent_consumed ~ water_regimen + strain_diversity + water_regimen:strain_diversity  + (1|sub_block), data=herbivorydata)
+summary(percent_herbivory_model)
+ranef(percent_herbivory_model)
+anova(percent_herbivory_model)
+plot(percent_herbivory_model)
+hist(residuals(percent_herbivory_model))
+
+#Total leaf area (cm^2). Nothing significant  
+leafarea_model <- lmer(totalarea.cm2 ~ water_regimen + strain_diversity + water_regimen:strain_diversity + (1|block), data=herbivorydata)
+summary(leafarea_model)
+ranef(leafarea_model)
+anova(leafarea_model)
+plot(leafarea_model)
+hist(residuals(leafarea_model))
+
+#Nothing significant when comparing means
+herbivorydata$strain_diversity <- factor(herbivorydata$strain_diversity, 
+                                     levels = c(1, 2, 4), 
+                                     labels = c("monoculture", "biculture", "polyculture"), 
+                                     ordered = TRUE)
+
+#Nothing significant when comparing emmeans, but a similar trend
+emm_herb <- emmeans(percent_herbivory_model, pairwise ~ water_regimen|strain_diversity)
+emm_herb
+
+#Nothing related to herbivores is significant when comparing the means and controls are removed.
+
+bartlett.test(relative_growth_rate ~ interaction(water_regimen, strain_diversity), data = weightdata)
+
+```
+
+
+```{r}
+#Caterpillar RGR by strain diversity and watering regimen 
+
+weightdata.summary <- weightdata %>%
+  group_by(strain_diversity, water_regimen) %>%
+  dplyr::summarise(RGR=mean(relative_growth_rate), se=sd(relative_growth_rate)/sqrt(n()))
+weightdata.summary
+
+weightdata.summary$water_regimen <- factor(weightdata.summary$water_regimen, levels = c("well-watered", "drought"))
+
+caterpillargrowthrateint_plot <- ggplot(weightdata.summary, aes(x=as.numeric(strain_diversity), y=RGR, ymin = RGR-se, ymax = RGR+se, color=water_regimen))+geom_pointrange(position=position_dodge(width=0.5), width= 0.2, alpha=4) + geom_point(position=position_dodge(width=0.5), size=5) + ylab(bquote('Caterpillar Relative Growth Rate ' (mg/day)))+scale_color_manual('Water Regimen', values = c("#0091FF", "#FF6E00")) +xlab("Strain Diversity") + theme_bw() + theme(panel.grid = element_blank()) + theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(), panel.border = element_blank(), panel.background = element_blank(), axis.line = element_line(colour = "black")) +
+scale_y_continuous(limits = c(0.1, 0.5), breaks = seq(0.1, 0.5, 0.1)) + theme(legend.position="none") 
+
+#+ annotate("text", x = 1, y = 0.4, label = "***", size = 6)
+
+#Caterpillar relative growth rate plot by strain treatment and watering 
+weightdata.summary <- weightdata %>%
+  group_by(strain_treatment, water_regimen) %>%
+  dplyr::summarise(RGR=mean(relative_growth_rate), se=sd(relative_growth_rate)/sqrt(n()))
+weightdata.summary
+
+caterpillargrowthrate_strain <- ggplot(weightdata.summary, aes(x=strain_treatment, y=RGR, ymin = RGR-se, ymax = RGR+se, color= water_regimen))+geom_pointrange(position=position_dodge(width=0.5), width= 0.2, alpha=4) + geom_point(position=position_dodge(width=0.5), size=5) + scale_x_discrete(limits = c("M1", "M2", "M3", "M4", "M5", "M6", "M7", "M8", "BI1", "BI2", "BI3", "BI4", "BI5", "BI6", "BI7", "BI8", "POLY1", "POLY2", "POLY3", "POLY4", "POLY5", "POLY6", "POLY7", "POLY8")) + ylab(bquote('Caterpillar Relative Growth Rate ' (mg/day))) + theme(legend.position="right") + scale_color_manual('Water Regimen', values = c("#FF6E00", "#0091FF"))
+
+caterpillargrowthrate_strain
+caterpillargrowthrate_strain + theme_bw() + theme(panel.grid = element_blank()) +
+  scale_y_continuous(limits = c(-0.2, 0.8), breaks = seq(-0.2, 0.8, 0.1)) 
+
+
+#Caterpillar relative growth rate plot by strain treatment
+weightdata.summary <- weightdata %>%
+  group_by(strain_treatment) %>%
+  dplyr::summarise(RGR=mean(relative_growth_rate), se=sd(relative_growth_rate)/sqrt(n()))
+weightdata.summary
+
+caterpillargrowthrate_strain <- ggplot(weightdata.summary, aes(x=strain_treatment, y=RGR, ymin = RGR-se, ymax = RGR+se, ))+geom_pointrange(position=position_dodge(width=0.5), width= 0.2, alpha=4) + geom_point(position=position_dodge(width=0.5), size=5) + scale_x_discrete(limits = c("M1", "M2", "M3", "M4", "M5", "M6", "M7", "M8", "BI1", "BI2", "BI3", "BI4", "BI5", "BI6", "BI7", "BI8", "POLY1", "POLY2", "POLY3", "POLY4", "POLY5", "POLY6", "POLY7", "POLY8")) + ylab(bquote('Caterpillar Relative Growth Rate ' (mg/day))) + theme(legend.position="right") 
+
+caterpillargrowthrate_strain
+caterpillargrowthrate_strain + theme_bw() + theme(panel.grid = element_blank()) +
+  scale_y_continuous(limits = c(0, 0.8), breaks = seq(0, 0.8, 0.1)) 
+
+#Consumed leaf area by watering regimen standard dot plot
+herbivorydata.summary <- herbivorydata %>%
+  group_by(water_regimen) %>%
+  dplyr::summarise(Consumed_Leaf_Area=mean(consumedarea.cm2), se=sd(consumedarea.cm2)/sqrt(n()))
+herbivorydata.summary
+
+herbivorydata.summary$water_regimen <- factor(herbivorydata.summary$water_regimen, levels = c("well-watered", "drought"))
+
+herbivory_plot <- ggplot(herbivorydata.summary, aes(x=as.factor(water_regimen), y=Consumed_Leaf_Area, ymin = Consumed_Leaf_Area-se, ymax = Consumed_Leaf_Area+se, color=water_regimen))+geom_pointrange(position=position_dodge(width=0.5), width= 0.2, alpha=4) + geom_point(position=position_dodge(width=0.5), size=5) + ylab(bquote('Consumed Leaf Area ' (cm^2)))+scale_color_manual('Water Regimen', values = c("#0091FF", "#FF6E00")) + theme(legend.position="right")+xlab("Watering Treatment")
+
+herbivory_plot + theme_bw() + theme(panel.grid = element_blank()) +
+  scale_y_continuous(limits = c(2, 3.5), breaks = seq(2, 3.5, 0.25)) 
+
+#Consumed leaf area by watering regimen and strain diversity standard dot plot
+herbivorydata.summary <- herbivorydata %>%
+  group_by(water_regimen, strain_diversity) %>%
+  dplyr::summarise(Consumed_Leaf_Area=mean(consumedarea.cm2), se=sd(consumedarea.cm2)/sqrt(n()))
+herbivorydata.summary
+
+herbivorydata.summary$water_regimen <- factor(herbivorydata.summary$water_regimen, levels = c("well-watered", "drought"))
+
+herbivoryint_plot <- ggplot(herbivorydata.summary, aes(x=strain_diversity, y=Consumed_Leaf_Area, ymin = Consumed_Leaf_Area-se, ymax = Consumed_Leaf_Area+se,color=water_regimen))+geom_pointrange(position=position_dodge(width=0.5), width= 0.2, alpha=4) + geom_point(position=position_dodge(width=0.5), size=5) + ylab(bquote('Consumed Leaf Area ' (cm^2)))+scale_color_manual('Water Regimen', values = c("#0091FF", "#FF6E00")) +xlab("Strain Diversity") + theme_bw() + theme(panel.grid = element_blank()) + theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(), panel.border = element_blank(), panel.background = element_blank(), axis.line = element_line(colour = "black")) + scale_y_continuous(limits = c(2, 4), breaks = seq(2, 4, 0.25)) + theme(legend.position="none") 
+
+herbivoryint_plot
+```
+
+
+```{r}
+
+####****Figure 1****###
+####*
+####****Create textbox model results****###
+
+textbox_caterpillargrowth <- ggdraw() + 
+  draw_label("
+Strain diversity
+Drought**
+Strain diversity × Drought*
+", fontface ="plain",
+             x = -0.5, y = 0.8, hjust = 0.5, vjust = 0.5, size = 10)
+
+textbox_herbivory <- ggdraw() + 
+  draw_label("
+Strain diversity
+Drought*
+Strain diversity × Drought
+", fontface ="plain",
+             x = -0.5, y = 0.8, hjust = 0.5, vjust = 0.5, size = 10)
+
+
+#****Arrange and save caterpillar RGR and herbivory interaction plot (Figure 1)****###
+arrange_cat <- ggarrange(caterpillargrowthrateint_plot, textbox_caterpillargrowth, herbivoryint_plot, textbox_herbivory, ncol = 4, nrow = 1, align = "h", labels = c("A", "", "B"), widths = c(10, 2, 10, 2))
+
+arrange_cat
+
+```
+
+```{r Caterpillar RGR CV and emmeans plots}
+
+#Subset data for 1 and 4 diversity levels 
+weightdata.sub <- reference %>%
+  left_join(read.csv('Feeding Trial/div2023_feedingtrial_clean.csv')) %>%
+  filter(culture_id != "control") %>%
+  filter(strain_diversity !="2")%>%
+  filter(!is.na(relative_growth_rate))
+
+weightdatacv.summary <- weightdata.sub %>%
+  group_by(block, strain_diversity) %>%
+  dplyr::summarise(RGR=mean(relative_growth_rate), se=sd(relative_growth_rate)/sqrt(n()), cv = sd(relative_growth_rate)/mean(relative_growth_rate))
+
+weightdatacv.summary2 <- subset(weightdatacv.summary,select=c(1,2,5))
+
+wide_data <- weightdatacv.summary2 %>%
+  pivot_wider(names_from = strain_diversity, values_from = cv, names_prefix = "cv_")
+
+
+# Perform paired t-test. p = 0.40. Nothing significant
+t.test(wide_data$cv_1, wide_data$cv_4, paired = TRUE)
+
+#Reaction norm plot plotting coefficients of variation in caterpillar RGR by 1 and 4 stain diversity levels for each block.
+cvrgr_plot <- ggplot(weightdatacv.summary2, aes(x = factor(strain_diversity, level=c('1', '4')), y = cv, group = block)) +
+  geom_line() + theme_bw() +
+  labs(x = "Strain Diversity", y = "Coefficients of variation (CV)") + geom_line(size=1) + geom_point(size =1) 
+
+cvrgr_plot
+
+
+```
+
+```{r plant trait GLMMs}
+
+##Diversity effects not a large driver of univariate plant traits.
+
+#****SLA**** Nothing significant 0.15 watering:herbivory effect. 
+sla_model <- lmer(SLA ~ water_regimen + strain_diversity + herb_treat + water_regimen:strain_diversity  +  herb_treat:strain_diversity + water_regimen:herb_treat + (1|block) , data=punchdata)
+summary(sla_model)
+ranef(sla_model)
+drop1(sla_model, test="Chisq")
+anova(sla_model)
+plot(sla_model)
+hist(residuals(sla_model))
+
+#Rerun model with strain diversity as a factor
+punchdata$strain_diversity_factor <- factor(punchdata$strain_diversity, 
+                                     levels = c(1, 2, 4), 
+                                     ordered = TRUE)
+
+#****PWC**** Nothing significant.  
+pwc_model <- lmer(PWC ~ water_regimen + strain_diversity + herb_treat + water_regimen:herb_treat + water_regimen:strain_diversity + strain_diversity:herb_treat + water_regimen:herb_treat + (1|block), data = punchdata)
+summary(pwc_model)
+ranef(pwc_model)
+anova(pwc_model)
+plot(pwc_model)
+hist(residuals(pwc_model))
+
+#Rerun model with strain diversity as a factor
+punchdata$strain_diversity_factor <- factor(punchdata$strain_diversity, 
+                                     levels = c(1, 2, 4), 
+                                     ordered = TRUE)
+
+lwc_model_factor <- lmer(LWC ~ water_regimen + strain_diversity_factor + herb_treat + water_regimen:herb_treat + water_regimen:strain_diversity_factor + strain_diversity_factor:herb_treat + (1|block), data = punchdata)
+summary(lwc_model_factor)
+ranef(lwc_model_factor)
+anova(lwc_model_factor)
+plot(lwc_model_factor)
+hist(residuals(lwc_model_factor))
+
+#Nothing significant
+emm_lwc <- emmeans(lwc_model_factor, pairwise ~ water_regimen|strain_diversity_factor)
+emm_lwc
+
+#****Relative Chlorophyll**** Nothing significant. Watering = 0.15
+chlorophyll_model <- lmer(relative_chlorophyll ~ water_regimen + strain_diversity + herb_treat + water_regimen:strain_diversity + water_regimen:herb_treat + strain_diversity:herb_treat + (1|block), data = photosynqdata)
+summary(chlorophyll_model)
+ranef(chlorophyll_model)
+anova(chlorophyll_model)
+plot(chlorophyll_model)
+hist(residuals(chlorophyll_model))
+
+#Rerun model with strain diversity as a factor
+photosynqdata$strain_diversity_factor <- factor(photosynqdata$strain_diversity, 
+                                     levels = c(1, 2, 4), 
+                                     ordered = TRUE)
+
+chlorophyll_model_factor <- lmer(relative_chlorophyll ~ water_regimen + strain_diversity_factor + herb_treat + water_regimen:herb_treat + water_regimen:strain_diversity_factor + strain_diversity_factor:herb_treat + (1|block), data = photosynqdata)
+summary(chlorophyll_model_factor)
+ranef(chlorophyll_model_factor)
+anova(chlorophyll_model_factor)
+plot(chlorophyll_model_factor)
+hist(residuals(chlorophyll_model_factor))
+
+#Nothing significant
+emm_chloro <- emmeans(chlorophyll_model_factor, pairwise ~ water_regimen|strain_diversity_factor)
+emm_chloro
+
+#****Leaf Temperature Differential**** Watering significant
+LTD_model <- lmer(LTD ~ water_regimen + strain_diversity + herb_treat + water_regimen:strain_diversity + water_regimen:herb_treat + strain_diversity:herb_treat + (1|block), data = photosynqdata)
+summary(LTD_model)
+ranef(LTD_model)
+anova(LTD_model)
+plot(LTD_model)
+hist(residuals(LTD_model))
+
+#Rerun model with strain diversity as factor
+LTD_model_factor <- lmer(LTD ~ water_regimen + strain_diversity_factor + herb_treat + water_regimen:herb_treat + water_regimen:strain_diversity_factor + strain_diversity_factor:herb_treat + (1|block), data = photosynqdata)
+summary(LTD_model_factor)
+ranef(LTD_model_factor)
+anova(LTD_model_factor)
+plot(LTD_model_factor)
+hist(residuals(LTD_model_factor))
+
+# Difference in watering treatments in all three diversity levels significant
+emm_LTD <- emmeans(LTD_model_factor, pairwise ~ water_regimen|strain_diversity_factor)
+emm_LTD
+
+#****Phi2****# Watering significant.
+phi2_model <- lmer(Phi2 ~ water_regimen + strain_diversity + herb_treat + water_regimen:herb_treat + water_regimen:strain_diversity + strain_diversity:herb_treat + (1|block), data = photosynqdata)
+summary(phi2_model)
+ranef(phi2_model)
+anova(phi2_model)
+plot(phi2_model)
+hist(residuals(phi2_model))
+
+#Rerun model with strain diversity as factor
+Phi2_model_factor <- lmer(LTD ~ water_regimen + strain_diversity_factor + herb_treat + water_regimen:herb_treat + water_regimen:strain_diversity_factor + strain_diversity_factor:herb_treat + (1|block), data = photosynqdata)
+summary(Phi2_model_factor)
+ranef(Phi2_model_factor)
+anova(Phi2_model_factor)
+plot(Phi2_model_factor)
+hist(residuals(Phi2_model_factor))
+
+# Difference in watering treatments in all three diversity levels significant. 
+emm_Phi2 <- emmeans(Phi2_model_factor, pairwise ~ water_regimen|strain_diversity_factor)
+emm_Phi2
+
+#****PhiNO**** Watering significant
+PhiNO_model <- lmer(PhiNO ~ water_regimen + strain_diversity + herb_treat + water_regimen:herb_treat + water_regimen:strain_diversity + strain_diversity:herb_treat + (1|block), data = photosynqdata)
+summary(PhiNO_model)
+ranef(PhiNO_model)
+anova(PhiNO_model)
+plot(PhiNO_model)
+hist(residuals(PhiNO_model))
+
+#Rerun model with strain diversity as factor
+PhiNO_model_factor <- lmer(PhiNO ~ water_regimen + strain_diversity_factor + herb_treat + water_regimen:herb_treat + water_regimen:strain_diversity_factor + strain_diversity_factor:herb_treat + (1|block), data = photosynqdata)
+summary(PhiNO_model_factor)
+ranef(PhiNO_model_factor)
+anova(PhiNO_model_factor)
+plot(PhiNO_model_factor)
+hist(residuals(PhiNO_model_factor))
+
+# Difference in watering treatments in all three diversity levels significant. 
+emm_PhiNO <- emmeans(PhiNO_model_factor, pairwise ~ water_regimen|strain_diversity_factor)
+emm_PhiNO
+
+#**** NPQt ****# Watering significant
+npqt_model <- lmer(NPQt ~ water_regimen + strain_diversity + herb_treat + performance_treatment + water_regimen:strain_diversity  + strain_diversity:herb_treat + (1|block), data = photosynqdata)
+summary(npqt_model)
+ranef(npqt_model)
+anova(npqt_model)
+plot(npqt_model)
+hist(residuals(npqt_model))
+
+#Rerun model with strain diversity as factor
+npqt_model_factor <- lmer(NPQt ~ water_regimen + strain_diversity_factor + herb_treat + water_regimen:herb_treat + water_regimen:strain_diversity_factor + strain_diversity_factor:herb_treat + (1|block), data = photosynqdata)
+summary(npqt_model_factor)
+ranef(npqt_model_factor)
+anova(npqt_model_factor)
+plot(npqt_model_factor)
+hist(residuals(npqt_model_factor))
+
+# Difference in watering treatments is significant between monocultures and bicultures but not polycultures
+emm_npqt <- emmeans(npqt_model_factor, pairwise ~ water_regimen|strain_diversity_factor)
+emm_npqt
+
+#**** Leaf thickness ****# Watering significant
+thickness_model <- lmer(Thickness ~ water_regimen + strain_diversity + herb_treat + water_regimen:strain_diversity + water_regimen:herb_treat + strain_diversity:herb_treat + (1|block), data = photosynqdata)
+summary(thickness_model)
+ranef(thickness_model)
+anova(thickness_model)
+plot(thickness_model)
+hist(residuals(thickness_model))
+
+#Rerun model with strain diversity as factor
+thickness_model_factor <- lmer(Thickness ~ water_regimen + strain_diversity_factor + herb_treat + water_regimen:herb_treat + water_regimen:strain_diversity_factor + strain_diversity_factor:herb_treat + (1|block), data = photosynqdata)
+summary(thickness_model_factor)
+ranef(thickness_model_factor)
+anova(thickness_model_factor)
+plot(thickness_model_factor)
+hist(residuals(thickness_model_factor))
+
+# Difference in watering treatments is significant in all three diversity treatments
+emm_thickness <- emmeans(thickness_model_factor, pairwise ~ water_regimen|strain_diversity_factor)
+emm_thickness
+
+#**** Plant height ****# Watering significant, weak evidence for main effect of herbivory and strain diversity, weak evidence for strain diversity by herbivory interaction
+plantheight_model <- lmer(height.cm ~ water_regimen + strain_diversity + herb_treat + water_regimen:strain_diversity + water_regimen:herb_treat + strain_diversity:herb_treat + (1|block), data = photosynqdata)
+summary(plantheight_model)
+ranef(plantheight_model)
+anova(plantheight_model)
+plot(plantheight_model)
+hist(residuals(plantheight_model))
+
+#Rerun model with strain diversity as factor
+plantheight_model_factor <- lmer(height.cm ~ water_regimen + strain_diversity_factor + herb_treat + water_regimen:herb_treat + water_regimen:strain_diversity_factor + strain_diversity_factor:herb_treat + (1|block), data = photosynqdata)
+summary(plantheight_model_factor)
+ranef(plantheight_model_factor)
+anova(plantheight_model_factor)
+plot(plantheight_model_factor)
+hist(residuals(plantheight_model_factor))
+
+# Difference in watering treatments is significant in all three diversity treatments. The difference between the watering treatments decreased in the polycultures, but not by much. 
+emm_height <- emmeans(plantheight_model_factor, pairwise ~ water_regimen|strain_diversity_factor)
+emm_height
+
+```
+
+```{r plant functional trait univariate plots}
+
+#Phi2 watering effect plot
+Phi2data.summary <- photosynqdata %>%
+  group_by(water_regimen) %>%
+  dplyr::summarise(PhiII=mean(Phi2), se=sd(Phi2)/sqrt(n()))
+Phi2data.summary
+
+Phi2data.summary$water_regimen <- factor(Phi2data.summary$water_regimen, levels = c("well-watered", "drought"))
+
+phi2water_plot <- ggplot(Phi2data.summary, aes(x=as.factor(water_regimen), y=PhiII, ymin = PhiII-se, ymax = PhiII+se, color=water_regimen))+geom_pointrange(position=position_dodge(width=0.5), width= 0.2, alpha=4) + geom_point(position=position_dodge(width=0.5), size=5) + ylab(bquote('ΦII ' (ΔφF/φF[m]))) +scale_color_manual('Water Regimen', values = c("#0091FF", "#FF6E00")) + theme(legend.position="right")+xlab("Watering Treatment") + theme(legend.position="right")+xlab("Watering Treatment")+ theme_bw() + theme(panel.grid = element_blank()) + theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(), panel.border = element_blank(), panel.background = element_blank(), axis.line = element_line(colour = "black")) + scale_y_continuous(limits = c(0.53, 0.59), breaks = seq(0.53, 0.59, 0.01)) + theme(legend.position="none")
+
+phi2water_plot
+
+# Phi2 Effect size
+((0.5789043-0.5449684)/0.5789043)*100
+
+
+#NPQt watering effect plot
+
+npqtdata.summary <- photosynqdata %>%
+  group_by(water_regimen) %>%
+  dplyr::summarise(npqt=mean(NPQt), se=sd(NPQt)/sqrt(n()))
+Phi2data.summary
+
+npqtdata.summary$water_regimen <- factor(Phi2data.summary$water_regimen, levels = c("well-watered", "drought"))
+
+npqtwater_plot <- ggplot(npqtdata.summary, aes(x=as.factor(water_regimen), y=npqt, ymin = npqt-se, ymax = npqt+se, color=water_regimen))+geom_pointrange(position=position_dodge(width=0.5), width= 0.2, alpha=4) + geom_point(position=position_dodge(width=0.5), size=5) + ylab(bquote('NPQt')) +scale_color_manual('Water Regimen', values = c("#0091FF", "#FF6E00")) + theme(legend.position="right")+xlab("Watering Treatment") + theme_bw() + theme(panel.grid = element_blank()) + theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(), panel.border = element_blank(), panel.background = element_blank(), axis.line = element_line(colour = "black")) + scale_y_continuous(limits = c(0.7, 1.9), breaks = seq(0.7, 1.9, 0.2)) + theme(legend.position="none")
+
+npqtwater_plot
+
+((1.553747-1.029184)/1.553747)*100
+
+#PhiNO watering effect plot
+
+PhiNOdata.summary <- photosynqdata %>%
+  group_by(water_regimen) %>%
+  dplyr::summarise(Phino=mean(PhiNO), se=sd(PhiNO)/sqrt(n()))
+PhiNOdata.summary
+
+PhiNOdata.summary$water_regimen <- factor(PhiNOdata.summary$water_regimen, levels = c("well-watered", "drought"))
+
+phinowater_plot <- ggplot(PhiNOdata.summary, aes(x=as.factor(water_regimen), y=Phino, ymin = Phino-se, ymax = Phino+se, color=water_regimen))+geom_pointrange(position=position_dodge(width=0.5), width= 0.2, alpha=4) + geom_point(position=position_dodge(width=0.5), size=5) + ylab(bquote('ΦNO ' (F[s]/F[m]))) +scale_color_manual('Water Regimen', values = c("#0091FF", "#FF6E00")) + theme(legend.position="right")+xlab("Watering Treatment") + theme_bw() + theme(panel.grid = element_blank()) + theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(), panel.border = element_blank(), panel.background = element_blank(), axis.line = element_line(colour = "black")) + scale_y_continuous(limits = c(0.19, 0.23), breaks = seq(0.19, 0.23, 0.01)) + theme(legend.position="none")
+
+phinowater_plot
+
+((0.22674470-0.2040070)/0.22674470)*100
+
+#Leaf temperature differntial plot watering
+LTDdata.summary <- photosynqdata %>%
+  group_by(water_regimen) %>%
+  dplyr::summarise(ltd=mean(LTD), se=sd(LTD)/sqrt(n()))
+PhiNOdata.summary
+
+LTDdata.summary$water_regimen <- factor(LTDdata.summary$water_regimen, levels = c("well-watered", "drought"))
+
+LTDwater_plot <- ggplot(LTDdata.summary, aes(x=as.factor(water_regimen), y=ltd, ymin = ltd-se, ymax = ltd+se, color=water_regimen))+geom_pointrange(position=position_dodge(width=0.5), width= 0.2, alpha=4) + geom_point(position=position_dodge(width=0.5), size=5) + ylab(bquote('Leaf temperature differential (C°) ')) +scale_color_manual('Water Regimen', values = c("#0091FF", "#FF6E00")) + theme(legend.position="right")+xlab("Watering Treatment")+ theme_bw() + theme(panel.grid = element_blank()) + theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(), panel.border = element_blank(), panel.background = element_blank(), axis.line = element_line(colour = "black")) + scale_y_continuous(limits = c(-3.2, -2), breaks = seq(-3.2, -2, 0.2)) + theme(legend.position="none") 
+
+LTDwater_plot
+
+#Leaf thickness
+thicknessdata.summary <- photosynqdata %>%
+  group_by(water_regimen) %>%
+  dplyr::summarise(thickness=mean(Thickness), se=sd(Thickness)/sqrt(n()))
+thicknessdata.summary
+
+thicknessdata.summary$water_regimen <- factor(thicknessdata.summary$water_regimen, levels = c("well-watered", "drought"))
+
+thicknesswater_plot <- ggplot(thicknessdata.summary, aes(x=as.factor(water_regimen), y=thickness, ymin = thickness-se, ymax = thickness+se, color=water_regimen))+geom_pointrange(position=position_dodge(width=0.5), width= 0.2, alpha=4) + geom_point(position=position_dodge(width=0.5), size=5) + ylab(bquote('Leaf thickness ' (mm))) +scale_color_manual('Water Regimen', values = c("#0091FF", "#FF6E00")) +xlab("Watering Treatment") + theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(), panel.border = element_blank(), panel.background = element_blank(), axis.line = element_line(colour = "black")) + scale_y_continuous(limits = c(0.45, 0.65), breaks = seq(0.45, 0.65, 0.05)) + theme(legend.position="none") 
+
+thicknesswater_plot
+
+#Plant height strain diversity by watering interaction
+
+heightdata.summary <- photosynqdata %>%
+  group_by(water_regimen, strain_diversity) %>%
+  dplyr::summarise(height=mean(height.cm), se=sd(height.cm)/sqrt(n()))
+heightdata.summary
+
+heightdata.summary$water_regimen <- factor(thicknessdata.summary$water_regimen, levels = c("well-watered", "drought"))
+
+thicknessint_plot <- ggplot(thicknessdata.summary, aes(x=as.numeric(water_regimen), y=thickness, ymin = thickness-se, ymax = thickness+se, color=water_regimen))+geom_pointrange(position=position_dodge(width=0.5), width= 0.2, alpha=4) + geom_point(position=position_dodge(width=0.5), size=5) + ylab(bquote('Plant height ' (cm))) +scale_color_manual('Water Regimen', values = c("#0091FF", "#FF6E00")) + theme(legend.position="right")+xlab("Watering Treatment")
+
+thicknesswater_plot + theme_bw() + theme(panel.grid = element_blank()) 
+
+#Plant height strain diversity by herbivory interaction 
+heightdata.summary <- photosynqdata %>%
+  group_by(strain_diversity, herb_treat) %>%
+  dplyr::summarise(height=mean(height.cm), se=sd(height.cm)/sqrt(n()))
+heightdata.summary
+
+height_divherbplot <- ggplot(heightdata.summary, aes(x=as.numeric(strain_diversity), y=height, ymin = height-se, ymax = height+se, color=herb_treat))+geom_pointrange(position=position_dodge(width=0.5), width= 0.2, alpha=4) + geom_point(position=position_dodge(width=0.5), size=5) +ylab("Plant height (cm)")+ theme(legend.position="right")+xlab("Strain Diversity")+scale_color_manual('Herbivory Treatment', values = c("green4", "purple")) + theme_bw() + theme(panel.grid = element_blank())
+
+height_divherbplot
+
+#Plant height herbivory plot
+heightdata.summary <- photosynqdata %>%
+  group_by(herb_treat) %>%
+  dplyr::summarise(height=mean(height.cm), se=sd(height.cm)/sqrt(n()))
+heightdata.summary
+
+heightdata.summary$herb_treat <- factor(heightdata.summary$herb_treat, levels = c("noherbivory", "herbivory"))
+
+height_herbplot <- ggplot(heightdata.summary, aes(x=herb_treat, y=height, ymin = height-se, ymax = height+se, color=herb_treat))+geom_pointrange(position=position_dodge(width=0.5), width= 0.2, alpha=4) + geom_point(position=position_dodge(width=0.5), size=5) +ylab("Plant height (cm)")+ theme(legend.position="right")+xlab("Herbivroy Treatment")+scale_color_manual('Herbivory Treatment', values = c("purple", "green4")) + theme_bw() + theme(panel.grid = element_blank())
+
+height_herbplot
+
+```
+```{r, fig.width=10, fig.height=10, fig.fullwidth=TRUE}
+
+####****Figure 2****###
+####*
+####****Create textbox model results****###
+
+textbox_LTD <- ggdraw() + 
+  draw_label("
+Strain diversity
+Drought**
+Herbivory
+Strain diversity × Drought
+Strain diversity × Herbivory
+Drought × Herbivory
+
+", fontface ="plain",
+             x = -0.5, y = 0.4, hjust = 0.5, vjust = 0.5, size = 8)
+
+textbox_thickness <- ggdraw() + 
+  draw_label("
+Strain diversity
+Drought**
+Herbivory
+Strain diversity × Drought
+Strain diversity × Herbivory
+Drought × Herbivory
+", fontface ="plain",
+             x = -0.5, y = 0.4, hjust = 0.5, vjust = 0.5, size = 8)
+
+textbox_phi2 <- ggdraw() + 
+  draw_label("
+Strain diversity
+Drought**
+Herbivory
+Strain diversity × Drought
+Strain diversity × Herbivory
+Drought × Herbivory
+", fontface ="plain",
+             x = -0.5, y = 0.8, hjust = 0.5, vjust = 0.5, size = 8)
+
+textbox_phiNO <- ggdraw() + 
+  draw_label("
+Strain diversity
+Drought**
+Herbivory
+Strain diversity × Drought
+Strain diversity × Herbivory
+Drought × Herbivory
+", fontface ="plain",
+             x = -0.5, y = 0.8, hjust = 0.5, vjust = 0.5, size = 8)
+
+textbox_NPQt <- ggdraw() + 
+  draw_label("
+Strain diversity
+Drought**
+Herbivory
+Strain diversity × Drought
+Strain diversity × Herbivory
+Drought × Herbivory
+", fontface ="plain",
+             x = -0.5, y = 0.5, hjust = 0.5, vjust = 0.5, size = 8)
+
+#****Arrange and save univariate plant trait plots (Figure 2)****###
+arrange_plantuni <- ggarrange(LTDwater_plot, textbox_LTD, thicknesswater_plot, textbox_thickness, phi2water_plot, textbox_phi2, phinowater_plot, textbox_phiNO, npqtwater_plot, textbox_NPQt , ncol = 4, nrow = 3, align = "h", labels = c("A", "", "B", "", "C", "", "D", "", "E"), widths = c(10, 2, 10, 2)) 
+
+arrange_plantuni
+
+
+
+```
+
+
+```{r biomass GLMMs}
+
+##****Shoot biomass**** Significant interaction between strain diversity and herbivory
+shoot_model <- lmer(shoot.g ~ water_regimen + strain_diversity + herb_treat + water_regimen:strain_diversity + water_regimen:herb_treat + strain_diversity:herb_treat + (1|block), data = harvestdata)
+summary(shoot_model)
+ranef(shoot_model)
+anova(shoot_model)
+plot(shoot_model)
+hist(residuals(shoot_model))
+summary(shoot_model)
+
+#Rerun model with strain diversity as factor
+harvestdata$strain_diversity_factor <- factor(harvestdata$strain_diversity, 
+                                     levels = c(1, 2, 4), 
+                                     ordered = TRUE)
+
+shootbio_model_factor <- lmer(shoot.g ~ water_regimen + strain_diversity_factor + herb_treat + water_regimen:herb_treat + water_regimen:strain_diversity_factor + strain_diversity_factor:herb_treat + (1|block), data = harvestdata)
+summary(shootbio_model_factor)
+ranef(shootbio_model_factor)
+anova(shootbio_model_factor)
+plot(shootbio_model_factor)
+hist(residuals(shootbio_model_factor))
+
+# Difference in herbivory treatments is significant in the bi and polycultures.  
+emm_shoot <- emmeans(shootbio_model_factor, pairwise ~ herb_treat|strain_diversity_factor)
+emm_shoot
+
+##****Root biomass**** Strain diversity weakly significant
+root_model <- lmer(root.g ~ water_regimen + strain_diversity + herb_treat + water_regimen:strain_diversity + water_regimen:herb_treat + strain_diversity:herb_treat + (1|block), data = harvestdata)
+summary(root_model)
+ranef(root_model)
+anova(root_model)
+plot(root_model)
+hist(residuals(root_model))
+summary(root_model)
+
+root_model_factor <- lmer(root.g ~ water_regimen + strain_diversity_factor + herb_treat + water_regimen:herb_treat + water_regimen:strain_diversity_factor + strain_diversity_factor:herb_treat + (1|block), data = harvestdata)
+summary(root_model_factor)
+ranef(root_model_factor)
+anova(root_model_factor)
+plot(root_model_factor)
+hist(residuals(root_model_factor))
+
+# Difference in herbivory treatments is significant in the biculture treatments  
+emm_root <- emmeans(root_model_factor, pairwise ~ herb_treat|strain_diversity_factor)
+emm_root
+
+##****Total biomass**** Weak strain diversity by herbivory interaction. 
+totbio_model <- lmer(totbio.g ~ water_regimen + strain_diversity + herb_treat + water_regimen:strain_diversity + water_regimen:herb_treat + strain_diversity:herb_treat + (1|block), data = harvestdata)
+summary(totbio_model)
+ranef(totbio_model)
+anova(totbio_model)
+plot(totbio_model)
+hist(residuals(totbio_model))
+
+#3 way interaction
+totbio_model_three <- lmer(totbio.g ~ water_regimen*strain_diversity*herb_treat + (1|block), data = harvestdata)
+summary(totbio_model_three)
+ranef(totbio_model_three)
+anova(totbio_model_three)
+plot(totbio_model_three)
+hist(residuals(totbio_model_three))
+
+# Diversity as a factor for emmeans
+
+#Rerun model with strain diversity as factor
+harvestdata$strain_diversity_factor <- factor(harvestdata$strain_diversity, 
+                                     levels = c(1, 2, 4), 
+                                     ordered = TRUE)
+
+totbio_model_factor <- lmer(totbio.g ~ water_regimen + strain_diversity_factor + herb_treat + water_regimen:strain_diversity_factor + water_regimen:herb_treat + strain_diversity_factor:herb_treat + (1|block), data = harvestdata)
+summary(totbio_model_factor)
+ranef(totbio_model_factor)
+anova(totbio_model_factor)
+plot(totbio_model_factor)
+hist(residuals(totbio_model_factor))
+
+# Difference in herbivory treatments is significant in the bi and polyculture treatments 
+emm_totbio <- emmeans(totbio_model_factor, pairwise ~ herb_treat|strain_diversity_factor)
+emm_totbio
+
+#Change contrasts to look at differences between diversity levels
+emmeans_totbioherb <- emmeans(totbio_model_factor, ~ strain_diversity_factor * herb_treat)
+emmeans_totbioherb
+# Run pairwise comparison specifically for herbivory treatment levels only. Nothing significant
+pairs(emmeans_totbioherb, by = "herb_treat")
+
+
+##****Root:shoot ratio**** Watering and strain diversity significant. 
+rootshoot_model <- lmer(root_shoot_ratio ~ water_regimen + strain_diversity + herb_treat + water_regimen:strain_diversity + water_regimen:herb_treat + strain_diversity:herb_treat + (1|block), data = harvestdata)
+summary(rootshoot_model)
+ranef(rootshoot_model)
+anova(rootshoot_model)
+plot(rootshoot_model)
+hist(residuals(rootshoot_model))
+
+##****Nodule count**** Water regimen and herbivory interaction weakly significant (both equal 0.05). Didn't get any boundary fit errors with block as a random effect.  
+nodule_model <- lmer(nodule_count ~ water_regimen + strain_diversity + herb_treat + water_regimen:strain_diversity + water_regimen:herb_treat + strain_diversity:herb_treat + (1|block), data = harvestdata)
+summary(nodule_model)
+ranef(nodule_model)
+anova(nodule_model)
+plot(nodule_model)
+hist(residuals(nodule_model))
+
+nodule_model_factor <- lmer(nodule_count ~ water_regimen + strain_diversity_factor + herb_treat + water_regimen:herb_treat + water_regimen:strain_diversity_factor + strain_diversity_factor:herb_treat + (1|block), data = harvestdata)
+summary(nodule_model_factor)
+ranef(nodule_model_factor)
+anova(nodule_model_factor)
+plot(nodule_model_factor)
+hist(residuals(nodule_model_factor))
+
+# Difference in herbivory treatments is significant in drought but not watered
+emm_nodule <- emmeans(nodule_model_factor, pairwise ~ herb_treat|water_regimen)
+emm_nodule
+```
+
+```{r plant performance and allocation trait plots}
+
+# Difference in watering treatments is significant in all three diversity treatments, but bicultures is weakly significant
+emm_shoot <- emmeans(shootbio_model_factor, pairwise ~ water_regimen|strain_diversity_factor)
+emm_shoot
+
+emm_shoot <- emmeans(shootbio_model_factor, pairwise ~ herb_treat|strain_diversity_factor)
+emm_shoot
+
+emm_tot <- emmeans(totbio_model_factor, pairwise ~ herb_treat|strain_diversity_factor)
+emm_tot
+
+#Shoot biomass strain diversity by herbivory plot
+shootdata.summary <- harvestdata %>%
+  group_by(strain_diversity, herb_treat) %>%
+  dplyr::summarise(bio=mean(shoot.g), se=sd(shoot.g)/sqrt(n()))
+shootdata.summary
+
+shootbio_divherbplot <- ggplot(shootdata.summary, aes(x=as.numeric(strain_diversity), y=bio, ymin = bio-se, ymax = bio+se, color=herb_treat))+geom_pointrange(position=position_dodge(width=0.5), width= 0.2, alpha=4) + geom_point(position=position_dodge(width=0.5), size=5) +ylab("Shoot biomass (g)")+ theme(legend.position="right")+xlab("Strain Diversity")+scale_color_manual('Herbivory Treatment', values = c("green4", "purple"))
+
+shootbio_divherbplot + theme_bw() + theme(panel.grid = element_blank())
+
+#Shoot biomass strain treatment herbivory plot
+
+shootdata.summary <- harvestdata %>%
+  group_by(strain_diversity, herb_treat) %>%
+  dplyr::summarise(bio=mean(shoot.g), se=sd(shoot.g)/sqrt(n()))
+shootdata.summary
+
+shootbio_strain <- ggplot(shootdata.summary, aes(x=as.factor(strain_treatment), y=bio, ymin = bio-se, ymax = bio+se))+geom_pointrange(position=position_dodge(width=0.5), width= 0.2, alpha=4) + geom_point(position=position_dodge(width=0.5), size=5) + scale_x_discrete(limits = c("M1", "M2", "M3", "M4", "M5", "M6", "M7", "M8", "BI1", "BI2", "BI3", "BI4", "BI5", "BI6", "BI7", "BI8", "POLY1", "POLY2", "POLY3", "POLY4", "POLY5", "POLY6", "POLY7", "POLY8"))+ylab("Plant biomass")+ theme(legend.position="right")+xlab("Strain Treatment")
+
+shootbio_strain
+
+#Shoot biomass strain diversity by watering plot
+
+
+#Root biomass strain diversity by herbivory plot
+rootdata.summary <- harvestdata %>%
+  group_by(strain_diversity, herb_treat) %>%
+  dplyr::summarise(rbio=mean(root.g), se=sd(root.g)/sqrt(n()))
+rootdata.summary
+
+rootbio_divherbplot <- ggplot(rootdata.summary, aes(x=as.numeric(strain_diversity), y=rbio, ymin = rbio-se, ymax = rbio+se, color=herb_treat))+geom_pointrange(position=position_dodge(width=0.5), width= 0.2, alpha=4) + geom_point(position=position_dodge(width=0.5), size=5) +ylab("Root biomass (g)")+ theme(legend.position="right")+xlab("Strain Diversity")+scale_color_manual('Herbivory Treatment', values = c("green4", "purple"))
+
+rootbio_divherbplot + theme_bw() + theme(panel.grid = element_blank())
+
+#Root biomass strain diversity plot
+rootdata.summary <- harvestdata %>%
+  group_by(strain_diversity) %>%
+  dplyr::summarise(rbio=mean(root.g), se=sd(root.g)/sqrt(n()))
+rootdata.summary
+
+rootbio_divherbplot <- ggplot(rootdata.summary, aes(x=as.numeric(strain_diversity), y=rbio, ymin = rbio-se, ymax = rbio+se))+geom_pointrange(position=position_dodge(width=0.5), width= 0.2, alpha=4) + geom_point(position=position_dodge(width=0.5), size=5) +ylab("Root biomass (g)")+ theme(legend.position="right")+xlab("Strain Diversity")
+
+rootbio_divherbplot + theme_bw() + theme(panel.grid = element_blank())
+
+#Root biomass by watering plot
+rootdata.summary <- harvestdata %>%
+  group_by(water_regimen) %>%
+  dplyr::summarise(rbio=mean(root.g), se=sd(root.g)/sqrt(n()))
+rootdata.summary
+
+rootbio_water <- ggplot(rootdata.summary, aes(x=water_regimen, y=rbio, ymin = rbio-se, ymax = rbio+se, color=water_regimen))+geom_pointrange(position=position_dodge(width=0.5), width= 0.2, alpha=4) + geom_point(position=position_dodge(width=0.5), size=5) + ylab(bquote('Root biomass ' (g)))+scale_color_manual('Water Regimen', values = c("#FF6E00", "#0091FF")) + theme(legend.position="right")+xlab("Watering treatment")+ scale_x_discrete(limits = c("well-watered", "drought"))
+
+rootbio_water+ theme_bw() + theme(panel.grid = element_blank())
+
+#Total biomass strain diversity by herbivory plot
+totbiodata.summary <- harvestdata %>%
+  group_by(strain_diversity, herb_treat) %>%
+  dplyr::summarise(totbio=mean(totbio.g), se=sd(totbio.g)/sqrt(n()))
+totbiodata.summary
+
+totbio_divherbplot <- ggplot(totbiodata.summary, aes(x=as.numeric(strain_diversity), y=totbio, ymin = totbio-se, ymax = totbio+se, color=herb_treat))+geom_pointrange(position=position_dodge(width=0.5), width= 0.2, alpha=4) + geom_point(position=position_dodge(width=0.5), size=5) + ylab(bquote('Total plant biomass ' (g)))+ theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(), panel.border = element_blank(), panel.background = element_blank(), axis.line = element_line(colour = "black")) +scale_color_manual('Water Regimen', values = c("green4", "purple")) + theme(legend.position="right")+xlab("Strain Diversity") + theme(legend.position="none") 
+
+totbio_divherbplot
+
+
+#Total biomass strain diversity by watering plot
+
+totbiodata.summary <- harvestdata %>%
+  group_by(strain_diversity, water_regimen) %>%
+  dplyr::summarise(totbio=mean(totbio.g), se=sd(totbio.g)/sqrt(n()))
+totbiodata.summary
+
+totbioint_plot <- ggplot(totbiodata.summary, aes(x=as.numeric(strain_diversity), y=totbio, ymin = totbio-se, ymax = totbio+se, color=water_regimen))+geom_pointrange(position=position_dodge(width=0.5), width= 0.2, alpha=4) + geom_point(position=position_dodge(width=0.5), size=5) + ylab(bquote('Plant biomass ' (g)))+scale_color_manual('Water Regimen', values = c("#FF6E00", "#0091FF")) + theme(legend.position="right")+xlab("Strain Diversity")
+
+totbioint_plot + theme_bw() + theme(panel.grid = element_blank())
+
+#Plant height
+
+heightdata.summary <- photosynqdata %>%
+  group_by(strain_diversity,water_regimen) %>%
+  dplyr::summarise(height=mean(height.cm), se=sd(height.cm)/sqrt(n()))
+heightdata.summary
+
+heightdata.summary$water_regimen <- factor(heightdata.summary$water_regimen, levels = c("well-watered", "drought"))
+
+heightint_plot <- ggplot(heightdata.summary, aes(x=as.numeric(strain_diversity), y=height, ymin = height-se, ymax = height+se, color=water_regimen))+geom_pointrange(position=position_dodge(width=0.5), width= 0.2, alpha=4) + geom_point(position=position_dodge(width=0.5), size=5) + ylab(bquote('Plant height ' (cm))) +scale_color_manual('Water Regimen', values = c("#0091FF", "#FF6E00")) + theme(legend.position="right")+xlab("Watering Treatment") + theme_bw() + theme(panel.grid = element_blank()) 
+
+heightint_plot
+
+#Total biomass watering plot
+totbiodata.summary <- harvestdata %>%
+  group_by(water_regimen) %>%
+  dplyr::summarise(totbio=mean(totbio.g), se=sd(totbio.g)/sqrt(n()))
+totbiodata.summary
+
+totbio_water <- ggplot(totbiodata.summary, aes(x=water_regimen, y=totbio, ymin = totbio-se, ymax = totbio+se, color=water_regimen))+geom_pointrange(position=position_dodge(width=0.5), width= 0.2, alpha=4) + geom_point(position=position_dodge(width=0.5), size=5) + ylab(bquote('Plant biomass ' (g)))+scale_color_manual('Water Regimen', values = c("#FF6E00", "#0091FF")) + theme(legend.position="right")+xlab("Watering treatment")+ scale_x_discrete(limits = c("well-watered", "drought"))
+
+totbio_water+ theme_bw() + theme(panel.grid = element_blank())
+
+
+#Leaf area strain diversity plot
+leafareadata.summary <- herbivorydata %>%
+  group_by(strain_diversity) %>%
+  dplyr::summarise(leafarea=mean(totalarea.cm2), se=sd(totalarea.cm2)/sqrt(n()))
+leafareadata.summary
+
+leafarea_divplot <- ggplot(leafareadata.summary, aes(x=as.factor(strain_diversity), y=leafarea, ymin = leafarea-se, ymax = leafarea+se))+geom_pointrange(position=position_dodge(width=0.5), width= 0.2, alpha=4) + geom_point(position=position_dodge(width=0.5), size=5) + scale_x_discrete(limits = c("1", "2", "4"))+ylab("Total leaf area (cm^2)")+ theme(legend.position="right")+xlab("Strain Diversity")
+
+leafarea_divplot + theme_bw() + theme(panel.grid = element_blank())
+
+#Leaf area watering plot
+leafareadata.summary <- herbivorydata %>%
+  group_by(water_regimen) %>%
+  dplyr::summarise(leafarea=mean(totalarea.cm2), se=sd(totalarea.cm2)/sqrt(n()))
+leafareadata.summary
+
+leafarea_watplot <- ggplot(leafareadata.summary, aes(x=as.factor(water_regimen), y=leafarea, ymin = leafarea-se, ymax = leafarea+se))+geom_pointrange(position=position_dodge(width=0.5), width= 0.2, alpha=4) + geom_point(position=position_dodge(width=0.5), size=5) + scale_x_discrete(limits = c("well-watered", "drought"))+ylab("Total leaf area (cm^2)")+ theme(legend.position="right")+xlab("Water regimen")
+
+leafarea_watplot + theme_bw() + theme(panel.grid = element_blank())
+
+#Root:shoot ratio diversity plot
+rootshootdata.summary <- harvestdata %>%
+  group_by(strain_diversity) %>%
+  dplyr::summarise(rootshoot=mean(root_shoot_ratio), se=sd(root_shoot_ratio)/sqrt(n()))
+rootshootdata.summary
+
+rootshoot_divplot <- ggplot(rootshootdata.summary, aes(x=as.factor(strain_diversity), y=rootshoot, ymin = rootshoot-se, ymax = rootshoot+se))+geom_pointrange(position=position_dodge(width=0.5), width= 0.2, alpha=4) + geom_point(position=position_dodge(width=0.5), size=5) + scale_x_discrete(limits = c("1", "2", "4"))+ylab("Root:shoot ratio")+ theme(legend.position="right")+xlab("Strain Diversity")
+
+rootshoot_divplot + theme_bw() + theme(panel.grid = element_blank())
+
+#Root:shoot ratio watering plot
+rootshootdata.summary <- harvestdata %>%
+  group_by(water_regimen) %>%
+  dplyr::summarise(rootshoot=mean(root_shoot_ratio), se=sd(root_shoot_ratio)/sqrt(n()))
+rootshootdata.summary
+
+rootshootdata.summary$water_regimen <- factor(rootshootdata.summary$water_regimen, levels = c("well-watered", "drought"))
+
+rootshootwater_plot <- ggplot(rootshootdata.summary, aes(x=as.factor(water_regimen), y=rootshoot, ymin = rootshoot-se, ymax = rootshoot+se, color=water_regimen))+geom_pointrange(position=position_dodge(width=0.5), width= 0.2, alpha=4) + geom_point(position=position_dodge(width=0.5), size=5) + ylab(bquote('Root:shoot ratio ')) +scale_color_manual('Water Regimen', values = c("#0091FF", "#FF6E00")) + theme(legend.position="right")+xlab("Watering Treatment")
+
+rootshootwater_plot + theme_bw() + theme(panel.grid = element_blank()) 
+
+#Root:shoot strain diversity by watering interaction plot
+
+rootshootdata.summary <- harvestdata %>%
+  group_by(strain_diversity, water_regimen) %>%
+  dplyr::summarise(rootshoot=mean(root_shoot_ratio), se=sd(root_shoot_ratio)/sqrt(n()))
+rootshootdata.summary
+
+rootshootdata.summary$water_regimen <- factor(rootshootdata.summary$water_regimen, levels = c("well-watered", "drought"))
+
+rootshootint_plot <- ggplot(rootshootdata.summary, aes(x=as.numeric(strain_diversity), y=rootshoot, ymin = rootshoot-se, ymax = rootshoot+se, color=water_regimen))+geom_pointrange(position=position_dodge(width=0.5), width= 0.2, alpha=4) + geom_point(position=position_dodge(width=0.5), size=5) + ylab(bquote('Root:shoot ratio')) +scale_color_manual('Water Regimen', values = c("#0091FF", "#FF6E00")) +xlab("Strain Diversity") + theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(), panel.border = element_blank(), panel.background = element_blank(), axis.line = element_line(colour = "black")) + scale_y_continuous(limits = c(0.65, 0.90), breaks = seq(0.65, 0.90, 0.05)) + theme(legend.position="none") 
+rootshootint_plot
+
+#Nodule watering x herbivory interaction
+
+harvestnoduledata <- na.omit(harvestdata)
+
+noduledata.summary <- harvestnoduledata %>%
+  group_by(water_regimen, herb_treat) %>%
+  dplyr::summarise(
+    nodules = mean(nodule_count), se = sd(nodule_count)/sqrt(n()), cv = sd(nodule_count)/mean(nodule_count)*100, sd=sd(nodule_count)
+  )
+noduledata.summary
+
+noduledata.summary$herb_treat <- factor(noduledata.summary$herb_treat, levels = c("noherbivory", "herbivory"))
+nodulelabs <- c("non leaf area removed", "leaf area removed")
+
+nodulewaterherb_plot <- ggplot(noduledata.summary, aes(x = herb_treat, y = nodules, group = water_regimen, color=water_regimen, ymax = nodules+se, ymin= nodules-se)) + geom_line(size=1) + geom_point(size=3) + geom_errorbar(size = 1, width = 0.1) + theme_bw() + scale_color_manual('Watering Treatment', values = c("darkorange", "#0091FF")) + xlab('Herbivory Treatment') + ylab(bquote('Nodule count')) + geom_line(size=1) + geom_point(size =1) + theme(panel.grid = element_blank())+
+  theme(panel.grid = element_blank(),
+        panel.border = element_blank(),
+        axis.line = element_line(color = "black"),
+        axis.text.y = element_text(color="black", size=rel(1)),
+        axis.text.x = element_text(color="black", size=rel(0.8),angle=0,hjust=0.5,vjust=1),
+        axis.title = element_text(size=rel(0.8)),
+        strip.text = element_text(size=rel(1),face="bold"),
+        axis.ticks = element_line(color = "black"),
+        legend.position ="none") + scale_x_discrete(labels = nodulelabs, expand = c(0.2, 0))
+
+nodulewaterherb_plot
+
+
+
+```
+```{r}
+####****Figure 3****###
+####*
+####****Create textbox model results****###
+
+textbox_biomass<- ggdraw() + 
+  draw_label("
+Strain diversity
+Drought
+Herbivory
+Strain diversity × Drought
+Strain diversity × Herbivory*
+Drought × Herbivory
+", fontface ="plain",
+             x = -0.5, y = 0.45, hjust = 0.5, vjust = 0.5, size = 8)
+
+textbox_rootshoot <- ggdraw() + 
+  draw_label("
+Strain diversity**
+Drought**
+Herbivory
+Strain diversity × Drought
+Strain diversity × Herbivory
+Drought × Herbivory
+", fontface ="plain",
+             x = -0.5, y = 0.8, hjust = 0.5, vjust = 0.5, size = 8)
+
+#****Arrange and save biomass and root:shoot ratio plots (Figure 3)****###
+arrange_fig3 <- ggarrange(totbio_divherbplot, textbox_biomass, rootshootint_plot, textbox_rootshoot, ncol = 4, nrow = 1, align = "h", labels = c("A", "", "B"), widths = c(10, 2, 10, 2))
+
+arrange_fig3
+
+#totbio_divherbplot, rootshootint_plot
+```
+
+
+```{r multivariate plant trait analysis load in dataframes}
+
+reference <- read.csv('Reference/div2023_reference.csv') #%>%
+  #filter(culture_id != "control")
+
+#****Primary plant trait dataframe****#
+traitdata_all <- reference %>%
+  left_join(read.csv('Multivariate Analysis/beanDIP_GH2023_traitall_multivariate.csv')) %>%
+  filter(culture_id != "control") %>%
+  filter(!is.na(trichome_density)) %>%
+  filter(!is.na(SLA)) %>%
+  filter(!is.na(Phi2)) %>%
+  filter(!is.na(nodule_count))
+
+traitdata_all <- na.exclude(traitdata_all)
+            
+
+```
+
+```{r multivariate plant trait analysis create and standardardize environmental and species matrices}
+
+#Create environmental matrix
+traitdata_clean.env <- select(traitdata_all, pot_id, block, sub_block, water_regimen, rhiz_treat, herb_treat, strain_treatment, strain_diversity, performance_treatment, performance_treatment_diversity, trait_selected, culture_id)
+
+#Convert fixed effects to factors and characters for environmental matrix with control plants
+traitdata_clean.env$block <- as.factor(traitdata_clean.env$block)
+traitdata_clean.env$sub_block <- as.factor(traitdata_clean.env$sub_block)
+traitdata_clean.env$water_regimen <- as.factor(traitdata_clean.env$water_regimen)
+traitdata_clean.env$herb_treat <- as.factor(traitdata_clean.env$herb_treat)
+traitdata_clean.env$strain_treatment <- as.factor(traitdata_clean.env$strain_treatment)
+traitdata_clean.env$strain_diversity <- as.numeric(traitdata_clean.env$strain_diversity)
+traitdata_clean.env$performance_treatment <- as.factor(traitdata_clean.env$performance_treatment)
+traitdata_clean.env$culture_id <- as.factor(traitdata_clean.env$culture_id)
+
+#Create species matrix
+traitdata_all_responses <- select(traitdata_all, LTD, NPQt, Phi2, PhiNO, chlorophyll, SLA, LWC, shoot.g, root.g, nodule_count, RS.ratio, height.cm, thickness, trichome_density)
+
+```
+
+```{r multivariate plant trait analysis running the RDA model}
+
+#Standardize variance of the dataframe
+    ###Set RDA scale to 3. Scale = 3 means that that the scores of both species (traits) and and site (plants) are scaled to have unit variance, essentially emphasizing the correlations between the two groups equally. 
+scale <- 3
+
+#Standardize variance of the dataframe
+traitdata_all_responses <- scale(traitdata_all_responses)
+
+#RDA model- Watering, strain diversity, and herbivory all significant. No interactions significant.   
+rda <- rda(traitdata_all_responses ~ water_regimen + strain_diversity + herb_treat + water_regimen:herb_treat + water_regimen:strain_diversity  + Condition(block), data=traitdata_clean.env, scale=TRUE)
+rda
+anova(rda)
+anova(rda, by="term")
+anova(rda, by="axis")
+anova(rda, by="margin")
+summary(rda)
+
+plot(rda)
+
+```
+
+```{r RDA plots}
+
+# Place fig.width = 14, fig.height = 14 in top of code chunk
+
+#Framework of plot using weighted averages of each diversity treatment.
+rdadivplot <- ordiplot(rda, display=c("wa"), cex= 0.5, cex.axis=0.8, cex.lab=0.9, tck=0.0, mgp=c(2, 0.5, 0), type="none", scaling=scale, xlim=c(-1, 1), ylim=c(-1, 1), xlab= "RDA 1", ylab = "RDA 2")
+
+#Strain diversity treatments. Seem to be in different spots, polycultures seem to be located in the middle of the trait space, not being pulled in any direction. Qualitatively it looks like the ellipses is a bit larger than the rest, and it looks like monocultures have more constrained responses.  
+#with(traitdata_all, ordiellipse(rda, display = "wa", traitdata_all$strain_diversity, kind = "se", conf=0.95, lty = 1, lwd = 2, col = "blue", show.groups ="1"))
+#with(traitdata_all, ordiellipse(rda, display = "wa", traitdata_all$strain_diversity, kind = "se", conf=0.95, lty = 1, lwd = 2, col = "red", show.groups ="2"))
+#with(traitdata_all, ordiellipse(rda, display = "wa", traitdata_all$strain_diversity, kind = "se", conf=0.95, lty = 1, lwd = 2, col = "green4", show.groups ="4"))
+
+#Watering treatments 
+with(traitdata_all, ordiellipse(rda, display = "wa", traitdata_all$water_regimen, kind = "se", conf=0.95, draw="polygon", lty = 1, lwd = 2, col = "#0091FF", show.groups ="well-watered", label=TRUE))
+with(traitdata_all, ordiellipse(rda, display = "wa", traitdata_all$water_regimen, kind = "se", conf=0.95, draw= "polygon", lty = 1, lwd = 2, col = "darkorange", show.groups ="drought", label=TRUE))
+with(traitdata_all, ordiellipse(rda, display = "wa", traitdata_all$herb_treat, kind = "se", conf=0.95, draw="polygon", lty = 1, lwd = 2, col = "pink", show.groups ="noherbivory"))
+with(traitdata_all, ordiellipse(rda, display = "wa", traitdata_all$herb_treat, kind = "se", conf=0.95, draw= "polygon", lty = 1, lwd = 2, col = "green", show.groups ="herbivory"))
+plot(envfit(rda~strain_diversity, traitdata_all, display="wa"), arrow.mul=2,add = TRUE, col="brown", cex=1.3)
+#legend("topleft", legend=c("well-watered", "drought"), col="black", pt.bg=c("#0091FF", "darkorange"), pch=c(21), pt.cex=1.5)
+
+#Add plant trait response vectors
+plot(envfit(rda ~ SLA, traitdata_all, display = "wa"), arrow.mul = 2, add = TRUE, col="black")
+plot(envfit(rda ~ nodule_count, traitdata_all, display = "wa"), arrow.mul = 2, add = TRUE, col="black")
+plot(envfit(rda ~ shoot.g, traitdata_all, display = "wa"), arrow.mul = 2, add = TRUE, col="black")
+plot(envfit(rda ~ root.g, traitdata_all, display = "wa"), arrow.mul = 2, add = TRUE, col="black")
+plot(envfit(rda ~ RS.ratio, traitdata_all, display = "wa"), arrow.mul = 2, add = TRUE, col="black")
+plot(envfit(rda ~ LTD, traitdata_all, display = "wa"), arrow.mul = 2, add = TRUE, col="black")
+plot(envfit(rda ~ NPQt, traitdata_all, display = "wa"), arrow.mul = 2, add = TRUE, col="black")
+plot(envfit(rda ~ Phi2, traitdata_all, display = "wa"), arrow.mul = 2, add = TRUE, col="black")
+plot(envfit(rda ~ PhiNO, traitdata_all, display = "wa"), arrow.mul = 2, add = TRUE, col="black")
+plot(envfit(rda ~ chlorophyll, traitdata_all, display = "wa"), arrow.mul = 2, add = TRUE, col="black")
+plot(envfit(rda ~ thickness, traitdata_all, display = "wa"), arrow.mul = 2, add = TRUE, col="black")
+plot(envfit(rda ~ height.cm, traitdata_all, display = "wa"), arrow.mul = 2, add = TRUE, col="black")
+plot(envfit(rda ~ trichome_density, traitdata_all, display = "wa"), arrow.mul = 2, add = TRUE, col="black")
+plot(envfit(rda ~ LWC, traitdata_all, display = "wa"), arrow.mul = 2, add = TRUE, col="black")
+
+#Save RDA figure
+
+```
+
+```{r trichome analysis}
+
+trichomes_div2023_mod <- lmer(trichome_density ~ water_regimen + strain_diversity + herb_treat  + water_regimen:strain_diversity + water_regimen:herb_treat + strain_diversity:herb_treat + (1|sub_block), data=trichomedata)
+summary(trichomes_div2023_mod)
+drop1(trichomes_div2023_mod, test="Chisq")
+anova(trichomes_div2023_mod)
+
+
+```
+
+
+
+```{r trichome plots}
+
+trichome_avg <- trichomedata %>%
+  group_by(strain_diversity, water_regimen) %>%
+  dplyr::summarise(trichomes = mean(trichome_density), se=sd(trichome_density)/sqrt(n()))
+
+tric <- ggplot(trichome_avg, aes(x=as.numeric(strain_diversity), y=trichomes, ymin= trichomes-se, ymax= trichomes + se, shape=water_regimen)) + geom_point(size=3, position=position_dodge(0.9)) + 
+  geom_errorbar(aes(ymin=trichomes-se, ymax=trichomes+se), width=0.2, position=position_dodge(0.9)) +
+   ylab('Trichome Density (#/leaf punch) ') + xlab('Strain Diversity') + theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(), panel.border = element_blank(), panel.background = element_blank(), axis.line = element_line(colour = "black")) + scale_y_continuous(limits = c(300, 450), breaks = seq(300, 450, 25))
+
+tric
+
+
+
+```
+
+
+
+
+
+
+
+
+
+
+
