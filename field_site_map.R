@@ -42,3 +42,20 @@ ggplot() +
   theme(axis.title=element_blank())
 
 ggsave("site_map_labels.png",width = 6,height = 4,units=c("in"))  
+
+# regional map
+midA_states<-counties(cb=T) %>% filter(STATEFP %in% c("24","42","54","51","10","11"))
+dc<-counties(cb=T) %>% filter(STATEFP =="11")
+
+ggplot()+
+  geom_sf(data=midA_states,fill="#f0f0f0")+
+  geom_sf(data=dc,fill="#f0f0f0")+
+  geom_sf(data=md,fill="#bdbdbd")+
+  geom_sf_label(data=sites,aes(label = sites$name),nudge_y = 0.15)+
+  geom_sf(data=sites, size = 4, fill="darkgreen",shape = 21, colour = "black")+
+  coord_sf(xlim=c(-80,-74.5), ylim=c(37.5, 40.5), expand=F)+
+  theme_bw()+
+  theme(axis.title=element_blank(),panel.background = element_rect(fill = "#deebf7"))
+
+ggsave("regional_site_map_labels.png",width = 6,height = 4,units=c("in"))  
+
