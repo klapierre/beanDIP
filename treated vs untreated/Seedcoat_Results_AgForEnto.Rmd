@@ -1,0 +1,359 @@
+---
+title: "Seedcoat Results"
+author: "Kelsey McGurrin"
+date: "`r Sys.Date()`"
+output: 
+  html_document:
+    toc: true
+    toc_float: true
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r include=FALSE}
+knitr::opts_chunk$set(echo = FALSE,warning = FALSE,include = TRUE,message = FALSE)
+
+#### setup ####
+#packages
+library(tidyverse)
+library(lme4)
+library(lmerTest)
+library(emmeans)
+library(ggpubr)
+
+#### import insect data ####
+
+insects<-read_csv("~/Dropbox/bean_dip_2018-2024/field trials/data/clean_data/clean_insects.csv") %>%
+  mutate(variety_name = case_when(year==2019 & variety %in% c(67,27) ~ "AG38X8",
+                                  year==2020 & variety %in% c(2,5) ~ "AG38X8",
+                                  year==2021 & variety %in% c(19,59) ~ "AG38X8",
+                                  year==2019 & variety == 83 ~ "SH3814LL",
+                                  year==2020 & variety == 50 ~ "SH3814LL",
+                                  year==2021 & variety %in% c(57,58) ~ "SH3814LL")) %>% # add in brands
+  rename(seed_coat=treatment_agg) %>%
+  drop_na() %>% # only varieties and years where we have both treated/untreated
+  filter(!(variety_name=="SH3814LL" & year== 2020)) %>% 
+  group_by(site,year,sampling_round,functional_group,variety_name,seed_coat,plot) %>%
+  summarize(plot_sum=sum(count)) %>% # sum insects across rows so 1 value per plot, then we'll avg plots 
+  rename(count=plot_sum)
+
+# most functional groups too few to do stats
+insects |> group_by(functional_group) |> summarize(sum=sum(count)) |> arrange(desc(sum))
+target_insects <- insects %>%
+  filter(functional_group %in% c("sucking","chewing","predator","pollinator")) # 80% of data anyway
+
+# so sites display properly from west to east
+target_insects$site<-factor(target_insects$site, levels = c("K", "C", "W", "PH"))
+
+# add in weeks after planting info
+target_insects<-target_insects %>% mutate(weeks_ap=case_when((year==2019 & sampling_round==1) ~ 3,
+                                   (year==2019 & sampling_round==2) ~ 6,
+                                   (year==2019 & sampling_round==3) ~ 9,
+                                   (year==2019 & sampling_round==4) ~ 13,
+                                   (year==2020 & sampling_round==1) ~ 3,
+                                   (year==2020 & sampling_round==2) ~ 6,
+                                   (year==2020 & sampling_round==3) ~ 9,
+                                   (year==2020 & sampling_round==4) ~ 12,
+                                   (year==2020 & sampling_round==5) ~ 15,
+                                   (year==2021 & sampling_round==1) ~ 4,
+                                   (year==2021 & sampling_round==2) ~ 7,
+                                   (year==2021 & sampling_round==3) ~ 9,
+                                   (year==2021 & sampling_round==4) ~ 15
+                                   ))
+
+#### import damage data ####
+damage2019 <- read.csv('~/Dropbox/bean_dip_2018-2024/field trials/data/clean_data/clean_damage_2019.csv') %>% 
+  mutate(pct_pucker='NA', year=2019)
+damage2020 <- read.csv('~/Dropbox/bean_dip_2018-2024/field trials/data/clean_data/clean_damage_2020.csv') %>% 
+  mutate(pct_pucker='NA', year=2020)
+damage2021 <- read.csv('~/Dropbox/bean_dip_2018-2024/field trials/data/clean_data/clean_damage_2021.csv') %>% 
+  mutate(year=2021)
+
+
+damage <- rbind(damage2019, damage2020, damage2021) %>% #bind all data together
+  # put in the real variety names and whether treated or untreated
+  mutate(variety_name=ifelse(year==2019 & variety %in% c(67,27), 'AG38X8',
+                             ifelse(year==2020 & variety %in% c(2,5), 'AG38X8',
+                                    ifelse(year==2021 & variety %in% c(19,59), 'AG38X8',
+                                           ifelse(year==2022 & variety %in% c(73), 'AG38X8',
+          ifelse(year==2019 & variety==83, 'SH3814LL',
+                 ifelse(year==2020 & variety==50, 'SH3814LL',
+                        ifelse(year==2021 & variety %in% c(57,58), 'SH3814LL',
+          ifelse(year==2019 & variety==31, 'S39-G2X',
+                 ifelse(year==2020 & variety==70, 'S39-G2X',
+                        ifelse(year==2021 & variety==82, 'S39-G2X',
+          ifelse(year==2019 & variety==55, '7390ET',
+          ifelse(year==2019 & variety==32, '539XT', 'NA'))))))))))))) %>% 
+  mutate(seed_coat=ifelse(year==2019 & variety==67, 'untrt',
+                          ifelse(year==2020 & variety==2, 'untrt',
+                                 ifelse(year==2021 & variety %in% c(19,57), 'untrt',
+                                        ifelse(year==2022 & variety==73, 'untrt', 'trt'))))) %>% 
+  filter(variety_name=="AG38X8" & year== c(2019,2020,2021) # only varieties and years where we have both treated/untreated
+         | variety_name=="SH3814LL" & year== 2021) %>%
+  mutate(stip_pct=(pct_leaves_stippled*as.numeric(pct_damage_stippled))/100,.after=chew_pct,.keep="unused") %>% #calculate stippling
+  select(-c(density,mammals,insects,insect.names,pct_pucker)) %>% # drop unnecessary columns
+  group_by(year, sampling.round, site, variety_name, seed_coat, plot) %>% # average rows a and b to get one value per plot
+  summarise(across(chew_pct:pct_yellow_leaf, ~ mean(.x, na.rm = TRUE))) %>%
+  ungroup()
+
+# so sites display properly from west to east
+damage$site<-factor(damage$site, levels = c("K", "C", "W", "PH"))
+
+# add in weeks after planting info
+damage<-damage %>% mutate(weeks_ap=case_when((year==2019 & sampling.round==1) ~ 3,
+                                   (year==2019 & sampling.round==2) ~ 6,
+                                   (year==2019 & sampling.round==3) ~ 9,
+                                   (year==2019 & sampling.round==4) ~ 13,
+                                   (year==2020 & sampling.round==1) ~ 3,
+                                   (year==2020 & sampling.round==2) ~ 6,
+                                   (year==2020 & sampling.round==3) ~ 9,
+                                   (year==2020 & sampling.round==4) ~ 12,
+                                   (year==2020 & sampling.round==5) ~ 15,
+                                   (year==2021 & sampling.round==1) ~ 4,
+                                   (year==2021 & sampling.round==2) ~ 7,
+                                   (year==2021 & sampling.round==3) ~ 9,
+                                   (year==2021 & sampling.round==4) ~ 15
+                                   ))
+
+#### import biomass data ####
+
+# open clean data file 
+# filter so only varieties/years where we have a treated/untreated comparison
+biomass<-read_csv("~/Dropbox/bean_dip_2018-2024/field trials/data/clean_data/clean_all_years_long.csv") %>%
+  filter(brandline=="AG38X8" & year== c(2019,2020,2021) 
+         | brandline=="SH3814 LL" & year== 2021) %>%
+  select(year:plot_yield_buac)
+
+# so sites display properly from west to east
+biomass$site<-factor(biomass$site, levels = c("K", "C", "W", "PH"))
+
+```
+
+
+
+# Chewing Damage
+```{r echo=FALSE}
+# summary table for graphs
+damage_siteAvgDf<-damage %>%
+  group_by(sampling.round,weeks_ap,year,seed_coat) %>%
+  summarise(site_avg_chew=mean(chew_pct,na.rm=T),
+            se_avg_chew=sd(chew_pct,na.rm = T)/sqrt(n()),
+            site_avg_stip=mean(stip_pct,na.rm=T),
+            se_avg_stip=sd(stip_pct,na.rm=T)/sqrt(n()))
+
+```
+
+```{r echo=TRUE}
+# 2019
+ggplot(data=filter(damage,year==2019),aes(x=chew_pct))+geom_histogram(binwidth = 1)
+chew_2019_mod<-lmer(chew_pct~seed_coat*as.factor(sampling.round)+(1|site),data=filter(damage,year==2019))
+anova(chew_2019_mod)
+plot(chew_2019_mod)
+emmeans(chew_2019_mod,specs = pairwise ~ sampling.round) # round 4 higher than others
+
+# 2020
+ggplot(data=filter(damage,year==2020),aes(x=chew_pct))+geom_histogram(binwidth = 1)
+chew_2020_mod<-lmer(chew_pct~seed_coat*as.factor(sampling.round)+(1|site),data=filter(damage,year==2020))
+anova(chew_2020_mod)
+plot(chew_2020_mod)
+emmeans(chew_2020_mod,specs = pairwise ~ seed_coat | sampling.round) # 2: trt lower; 5: trt higher
+
+# 2021 add random effect for variety
+ggplot(data=filter(damage,year==2021),aes(x=chew_pct))+geom_histogram(binwidth = 1)
+chew_2021_mod<-lmer(chew_pct~seed_coat*as.factor(sampling.round)+(1|site)+(1|variety_name),
+                       data=filter(damage,year==2021))
+anova(chew_2021_mod)
+plot(chew_2021_mod)
+emmeans(chew_2021_mod,specs = pairwise ~ sampling.round) # 1 higher than 2 or 3, 4 higher than 2
+
+```
+
+
+# Stippling Damage
+```{r echo=TRUE}
+# 2019
+ggplot(data=filter(damage,year==2019),aes(x=stip_pct))+geom_histogram(binwidth = 1)
+stip_2019_mod<-lmer(stip_pct~seed_coat*as.factor(sampling.round)+(1|site),data=filter(damage,year==2019))
+anova(stip_2019_mod)
+plot(stip_2019_mod)
+emmeans(stip_2019_mod,specs = pairwise ~ seed_coat | sampling.round) # round 1: untreated higher
+
+
+# 2020
+ggplot(data=filter(damage,year==2020),aes(x=stip_pct))+geom_histogram(binwidth = 1)
+stip_2020_mod<-lmer(stip_pct~seed_coat*as.factor(sampling.round)+(1|site),data=filter(damage,year==2020))
+anova(stip_2020_mod)
+plot(stip_2020_mod)
+emmeans(stip_2020_mod,specs = pairwise ~ sampling.round) # round 5 higher than others
+
+# 2021 add random effect for variety
+ggplot(data=filter(damage,year==2021),aes(x=stip_pct))+geom_histogram(binwidth = 1)
+stip_2021_mod<-lmer(stip_pct~seed_coat*as.factor(sampling.round)+(1|site)+(1|variety_name),
+                    data=filter(damage,year==2021)) 
+# model has singular fit, so tried running with variety as fixed effect instead of random (see below). seed coat result never changed, so kept simplest model
+anova(stip_2021_mod)
+plot(stip_2021_mod)
+emmeans(stip_2021_mod,specs = pairwise ~ sampling.round) # 4 higher than others
+
+# #singularity check
+# summary(stip_2021_mod)
+# ranef(stip_2021_mod) #zeros= bad
+# # try running as fixed effect instead of random
+# stip_2021_mod3<-lm(stip_pct~seed_coat*as.factor(sampling.round)+variety_name*seed_coat+site,data=filter(damage,year==2021))
+# anova(stip_2021_mod3) # site and sampling round signif
+
+```
+
+# Combined Damage Figure
+```{r echo=FALSE}
+color_chewing_facet<-
+  ggplot(damage_siteAvgDf, aes(x=weeks_ap,y=site_avg_chew,shape=seed_coat,color=seed_coat,group=seed_coat,
+                               linetype = seed_coat))+geom_line()+facet_wrap(~year)+geom_point(size=2)+
+  geom_errorbar(aes(ymin=site_avg_chew-se_avg_chew,
+                      ymax=site_avg_chew+se_avg_chew),width=0.2)+
+  scale_shape_manual(values = c(17,19),labels=c("Treated","Untreated"))+
+  scale_color_manual(values=c("#f1a340","#998ec3"),labels=c("Treated","Untreated"))+
+  scale_linetype_manual(values=c("solid","dashed"),labels=c("Treated","Untreated"))+
+  labs(y="Chewing Damage\nAvg % ± SE",x="",
+         shape="Seed Coat",color="Seed Coat",linetype="Seed Coat") + 
+    theme_bw() + theme(panel.grid.minor = element_blank(),
+                     strip.text = element_text(face="bold"),
+                     plot.margin = unit(c(0,0,0,0), 'lines'))+scale_x_continuous(breaks=c(3,6,9,12,15))+
+  geom_text(data = filter(damage_siteAvgDf,year==2020),aes(x = 6, y = 18,label = "*"),color="black",size=10)+
+  geom_text(data = filter(damage_siteAvgDf,year==2020),aes(x = 15, y = 13,label = "*"),color="black",size=10)
+color_chewing_facet
+
+
+color_stippling_facet<-
+  ggplot(damage_siteAvgDf, aes(x=weeks_ap,y=site_avg_stip,shape=seed_coat,color=seed_coat,group=seed_coat,
+                               linetype = seed_coat))+geom_line()+facet_wrap(~year)+geom_point(size=2)+
+  geom_errorbar(aes(ymin=site_avg_stip-se_avg_stip,
+                      ymax=site_avg_stip+se_avg_stip),width=0.2)+
+  scale_shape_manual(values = c(17,19),labels=c("Treated","Untreated"))+
+  scale_color_manual(values=c("#f1a340","#998ec3"),labels=c("Treated","Untreated"))+
+  scale_linetype_manual(values=c("solid","dashed"),labels=c("Treated","Untreated"))+
+  labs(y="Stippling Damage\nAvg % ± SE",x="Weeks After Planting",
+         shape="Seed Coat",color="Seed Coat",linetype="Seed Coat") + 
+    theme_bw() + theme(panel.grid.minor = element_blank(),
+                     strip.text = element_text(face="bold"),
+                     plot.margin = unit(c(0,0,0,0), 'lines'))+scale_x_continuous(breaks=c(3,6,9,12,15))+
+  geom_text(data = filter(damage_siteAvgDf,year==2019),aes(x = 3, y = 6,label = "*"),color="black",size=10)
+color_stippling_facet
+
+color_damage_figure <- ggarrange(color_chewing_facet, color_stippling_facet, 
+                    labels = c("A", "B"),
+                    ncol = 1, nrow = 2,common.legend = TRUE, legend = "bottom",hjust=-1,vjust=1,align = c("v"))
+color_damage_figure
+
+#ggsave("C:\\Users\\kmcgurri\\Dropbox\\bean_dip_2018-2024\\manuscripts\\field trial seed coats\\figures\\color_damage_figure.tiff",plot=color_damage_figure,width=6,height=4,units=c("in"))
+
+```
+
+# Plant Biomass
+```{r echo=FALSE}
+# summary table for graphs
+biomass_siteAvgDf<-biomass %>%
+  group_by(year,seed_treat) %>%
+  summarise(site_avg_plant_biomass=mean(plant_biomass_g,na.rm=T),
+            se_plant_biomass=sd(plant_biomass_g,na.rm = T)/sqrt(n()),
+            site_avg_beans=mean(beans_g,na.rm=T),
+            se_beans=sd(beans_g,na.rm = T)/sqrt(n()),
+            site_avg_yield=mean(plot_yield_buac,na.rm=T),
+            se_yield=sd(plot_yield_buac,na.rm = T)/sqrt(n()))
+
+```
+```{r echo=TRUE}
+# 2019
+ggplot(data=filter(biomass,year==2019),aes(x=plant_biomass_g))+geom_histogram(binwidth = 1)
+biomass_2019_mod<-lmer(plant_biomass_g~seed_treat+(1|site),data=filter(biomass,year==2019))
+anova(biomass_2019_mod)
+plot(biomass_2019_mod)
+
+# 2020
+ggplot(data=filter(biomass,year==2020),aes(x=plant_biomass_g))+geom_histogram(binwidth = 1)
+biomass_2020_mod<-lmer(plant_biomass_g~seed_treat+(1|site),data=filter(biomass,year==2020))
+anova(biomass_2020_mod)
+plot(biomass_2020_mod)
+
+# 2021 add random effect for variety
+ggplot(data=filter(biomass,year==2021),aes(x=plant_biomass_g))+geom_histogram(binwidth = 1)
+biomass_2021_mod<-lmer(plant_biomass_g~seed_treat+(1|site)+(1|brandline),
+                       data=filter(biomass,year==2021))
+anova(biomass_2021_mod)
+plot(biomass_2021_mod)
+emmeans(biomass_2021_mod,specs = pairwise ~ seed_treat) # treated is lower
+
+```
+
+# Beans per Plant
+```{r echo=TRUE}
+# 2019
+ggplot(data=filter(biomass,year==2019),aes(x=beans_g))+geom_histogram(binwidth = 1)
+beans_2019_mod<-lmer(beans_g~seed_treat+(1|site),data=filter(biomass,year==2019))
+anova(beans_2019_mod)
+plot(beans_2019_mod)
+
+# 2020
+ggplot(data=filter(biomass,year==2020),aes(x=beans_g))+geom_histogram(binwidth = 1)
+beans_2020_mod<-lmer(beans_g~seed_treat+(1|site),data=filter(biomass,year==2020))
+anova(beans_2020_mod)
+plot(beans_2020_mod)
+
+# 2021 add random effect for variety
+ggplot(data=filter(biomass,year==2021),aes(x=plant_biomass_g))+geom_histogram(binwidth = 1)
+beans_2021_mod<-lmer(beans_g~seed_treat+(1|site)+(1|brandline),
+                     data=filter(biomass,year==2021))
+anova(beans_2021_mod)
+plot(beans_2021_mod)
+emmeans(beans_2021_mod,specs = pairwise ~ seed_treat) # treated is lower
+
+```
+# Combined Harvest Figure
+```{r echo=FALSE}
+color_biomass_facet<-
+  ggplot(biomass_siteAvgDf,aes(x=rev(seed_treat),y=site_avg_plant_biomass,
+                               shape=rev(seed_treat),linetype=rev(seed_treat),color=rev(seed_treat)))+
+         geom_line()+ geom_point(size=3)+ facet_wrap(~year,nrow=1)+
+  scale_linetype_manual(values=c("dashed","solid"),labels=c("Untreated","Treated"))+
+  scale_shape_manual(values = c(19,17),labels=c("Untreated","Treated"))+
+  scale_color_manual(values=c("#998ec3","#f1a340"),labels=c("Untreated","Treated"))+
+         geom_errorbar(aes(ymin=site_avg_plant_biomass-se_plant_biomass,
+                           ymax=site_avg_plant_biomass+se_plant_biomass),width=0.2)+
+         
+  labs(y="Whole Biomass (g)\nAvg ± SE",x="")+
+  scale_x_discrete(labels=c("Untreated","Treated")) +
+  scale_y_continuous(limits = c(27,52))+
+  theme_bw() + theme(panel.grid.minor = element_blank(),
+                     strip.text = element_text(face="bold",size=rel(1.5)),legend.position = "none")+
+  geom_text(data = filter(biomass_siteAvgDf,year==2021),aes(x = 1.5, y = 47,label = "*"),color="black",size=10)
+color_biomass_facet
+
+color_beans_facet<-
+  ggplot(biomass_siteAvgDf,aes(x=rev(seed_treat),y=site_avg_beans,
+                               shape=rev(seed_treat),linetype=rev(seed_treat),color=rev(seed_treat)))+
+         geom_line()+ geom_point(size=3)+ facet_wrap(~year,nrow=1)+
+  scale_linetype_manual(values=c("dashed","solid"),labels=c("Untreated","Treated"))+
+  scale_shape_manual(values = c(19,17),labels=c("Untreated","Treated"))+
+  scale_color_manual(values=c("#998ec3","#f1a340"),labels=c("Untreated","Treated"))+
+         geom_errorbar(aes(ymin=site_avg_beans-se_beans,
+                           ymax=site_avg_beans+se_beans),width=0.2)+
+  labs(y="Beans per Plant (g)\nAvg ± SE",x="Seed Coat")+
+  scale_x_discrete(labels=c("Untreated","Treated")) +
+  scale_y_continuous(limits = c(9,27))+
+  theme_bw() + theme(panel.grid.minor = element_blank(),
+                     strip.text = element_text(face="bold",size=rel(1.5)),legend.position = "none")+
+  geom_text(data = filter(biomass_siteAvgDf,year==2021),aes(x = 1.5, y = 22.5,label = "*"),color="black",size=10)
+color_beans_facet
+
+color_harvest_figure <- ggarrange(color_biomass_facet, color_beans_facet, 
+                    labels = c("A", "B"),
+                    ncol = 1, nrow = 2, legend = "none",hjust=-1,vjust=1,align = c("v"))
+color_harvest_figure
+#ggsave("C:\\Users\\kmcgurri\\Dropbox\\bean_dip_2018-2024\\manuscripts\\field trial seed coats\\figures\\color_harvest_figure.tiff",plot=color_harvest_figure,width=6,height=4,units=c("in"))
+
+```
+
+# Session Info
+```{r echo=FALSE}
+sessionInfo()
+```
