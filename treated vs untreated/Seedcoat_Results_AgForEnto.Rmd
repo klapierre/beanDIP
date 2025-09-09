@@ -353,6 +353,116 @@ color_harvest_figure
 
 ```
 
+# Other Facts for pub
+```{r echo=FALSE}
+# Most common insects?
+bugs19 <- read.csv('~/Dropbox/bean_dip_2018-2024/field trials/data/clean_data/clean_damage_2019.csv') %>%
+  filter(variety %in% c(67,27)) %>%
+  select(insect.names) %>%
+  separate_longer_delim(insect.names, delim = ",") %>%
+  drop_na() %>%
+  mutate(trimmed=str_trim(insect.names,side="left"),.keep="unused") %>%
+  separate_wider_regex(trimmed, c(count = ".*?", " ", bugs = ".*")) %>%
+  mutate(simple.bugs=case_when(
+    str_detect(bugs, "hopper")==T ~ "planthopper",
+    str_detect(bugs, "stink")==T ~ "stinkbug",
+    str_detect(bugs, "thrip")==T ~ "thrips",
+    str_detect(bugs, "aphid")==T ~ "aphid",
+    str_detect(bugs, "miner")==T ~ "caterpillar",
+    str_detect(bugs, "clover")==T ~ "caterpillar",
+    str_detect(bugs, "duskywing")==T ~ "caterpillar",
+    str_detect(bugs, "fold")==T ~ "caterpillar",
+    str_detect(bugs, "caterpillar")==T ~ "caterpillar",
+    str_detect(bugs, "morbia")==T ~ "caterpillar",
+    str_detect(bugs, "geo")==T ~ "caterpillar",
+    str_detect(bugs, "roll")==T ~ "caterpillar",
+    str_detect(bugs, "cocoon")==T ~ "caterpillar",
+    str_detect(bugs, "rctiid")==T ~ "caterpillar",
+    str_detect(bugs, "bug")==T ~ "bug",
+    str_detect(bugs, "beetle")==T ~ "beetle",
+  )) 
+
+bugs20 <- read.csv('~/Dropbox/bean_dip_2018-2024/field trials/data/clean_data/clean_damage_2020.csv') %>%
+  filter(variety %in% c(2,5)) %>%
+  select(insect.names) %>%
+  separate_longer_delim(insect.names, delim = ",") %>%
+  drop_na() %>%
+  mutate(trimmed=str_trim(insect.names,side="left"),.keep="unused") %>%
+  separate_wider_regex(trimmed, c(count = ".*?", " ", bugs = ".*"),too_few = "align_start") %>%
+  mutate(simple.bugs=case_when(
+    str_detect(bugs, "hopper")==T ~ "planthopper",
+    str_detect(bugs, "stink")==T ~ "stinkbug",
+    str_detect(bugs, "thrip")==T ~ "thrips",
+    str_detect(bugs, "aphid")==T ~ "aphid",
+    str_detect(bugs, "miner")==T ~ "caterpillar",
+    str_detect(bugs, "clover")==T ~ "caterpillar",
+    str_detect(bugs, "duskywing")==T ~ "caterpillar",
+    str_detect(bugs, "skipper")==T ~ "caterpillar",
+    str_detect(bugs, "fold")==T ~ "caterpillar",
+    str_detect(bugs, "caterpillar")==T ~ "caterpillar",
+    str_detect(bugs, "morbia")==T ~ "caterpillar",
+    str_detect(bugs, "geo")==T ~ "caterpillar",
+    str_detect(bugs, "roll")==T ~ "caterpillar",
+    str_detect(bugs, "cocoon")==T ~ "caterpillar",
+    str_detect(bugs, "rctiid")==T ~ "caterpillar",
+    str_detect(bugs, "looper")==T ~ "caterpillar",
+    str_detect(bugs, "bug")==T ~ "bug",
+    str_detect(bugs, "beetle")==T ~ "beetle",
+  )) 
+
+bugs21 <- read.csv('~/Dropbox/bean_dip_2018-2024/field trials/data/clean_data/clean_damage_2021.csv') %>%
+  filter(variety %in% c(19,59,57,58)) %>%
+  select(insect.names) %>%
+  separate_longer_delim(insect.names, delim = ",") %>%
+  drop_na() %>%
+  mutate(trimmed=str_trim(insect.names,side="left"),.keep="unused") %>%
+  separate_wider_regex(trimmed, c(count = ".*?", " ", bugs = ".*"),too_few = "align_start") %>%
+  mutate(simple.bugs=case_when(
+    str_detect(bugs, "hopper")==T ~ "planthopper",
+    str_detect(bugs, "PLH")==T ~ "planthopper",
+    str_detect(bugs, "thrip")==T ~ "thrips",
+    str_detect(bugs, "stink")==T ~ "stinkbug",
+    str_detect(bugs, "aphid")==T ~ "aphid",
+    str_detect(bugs, "miner")==T ~ "caterpillar",
+    str_detect(bugs, "clover")==T ~ "caterpillar",
+    str_detect(bugs, "duskywing")==T ~ "caterpillar",
+    str_detect(bugs, "skipper")==T ~ "caterpillar",
+    str_detect(bugs, "fold")==T ~ "caterpillar",
+    str_detect(bugs, "caterpillar")==T ~ "caterpillar",
+    str_detect(bugs, "morbia")==T ~ "caterpillar",
+    str_detect(bugs, "geo")==T ~ "caterpillar",
+    str_detect(bugs, "roll")==T ~ "caterpillar",
+    str_detect(bugs, "cocoon")==T ~ "caterpillar",
+    str_detect(bugs, "rctiid")==T ~ "caterpillar",
+    str_detect(bugs, "looper")==T ~ "caterpillar",
+    str_detect(bugs, "tier")==T ~ "caterpillar",
+    str_detect(bugs, "bug")==T ~ "bug",
+    str_detect(bugs, "beetle")==T ~ "beetle",
+  )) 
+
+rbind(bugs19,bugs20,bugs21)%>%
+  group_by(simple.bugs) %>%
+  summarize(total=sum(as.numeric(count),na.rm = T)) %>%
+  arrange(desc(total))
+
+# % change for harvest metrics
+# (final-initial)/initial
+
+# whole plant biomass 
+biomass_siteAvgDf %>% filter(year==2021) %>% 
+  summarize(((site_avg_plant_biomass[seed_treat=="treated"]-site_avg_plant_biomass[seed_treat=="untreated"])/
+              site_avg_plant_biomass[seed_treat=="untreated"])*100
+            )
+
+# bean yield 
+biomass_siteAvgDf %>% filter(year==2021) %>% 
+  summarize(((site_avg_beans[seed_treat=="treated"]-site_avg_beans[seed_treat=="untreated"])/
+              site_avg_beans[seed_treat=="untreated"])*100
+            )
+
+```
+
+
 # Session Info
 ```{r echo=FALSE}
 sessionInfo()
