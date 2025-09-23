@@ -87,13 +87,13 @@ biomass<-read_csv("~/Dropbox/bean_dip_2018-2024/field trials/data/clean_data/cle
 AG<- biomass %>%
   filter(brandline=="AG38X8") %>%
   filter(year %in% c(2019,2020,2021)) %>%
-  select(year:plot_yield_buac) %>%
+  select(year:row,plant_biomass_g,beans_g) %>%
   unique() # 2019 PH 27-2-4 had two photosynq measurements, leading to duplicate in joined df. drop artifact.
 
 SH<- biomass %>%
   filter(brandline=="SH3814 LL") %>%
   filter(year == 2021) %>%
-  select(year:plot_yield_buac)
+  select(year:row,plant_biomass_g,beans_g)
 
 biomass<-rbind(AG,SH)
 
@@ -130,12 +130,12 @@ chew_2020_mod<-lmer(chew_pct~seed_coat*as.factor(sampling.round)+(1|site),data=f
 anova(chew_2020_mod)
 summary(chew_2020_mod)
 plot(chew_2020_mod)
-emmeans(chew_2020_mod,specs = pairwise ~ seed_coat | sampling.round) 
+emmeans(chew_2020_mod,specs = pairwise ~ sampling.round) 
 ```
-round 2: trt lower; round 5: trt higher
+round 1 lower than others; 2 lower than 3, 4, 5; 5 higher than 3 or 4
 
 ## 2021 
-add random effect for variety
+add random effect for variety. Model has singular fit, so tried running with variety as fixed effect instead of random (see below). seed coat result never changed, so kept simplest model
 ```{r echo=TRUE} 
 ggplot(data=filter(damage,year==2021),aes(x=chew_pct))+geom_histogram(binwidth = 1)
 chew_2021_mod<-lmer(chew_pct~seed_coat*as.factor(sampling.round)+(1|site)+(1|variety_name),
@@ -144,6 +144,13 @@ anova(chew_2021_mod)
 summary(chew_2021_mod)
 plot(chew_2021_mod)
 emmeans(chew_2021_mod,specs = pairwise ~ sampling.round) 
+
+# #singularity check
+# summary(chew_2021_mod)
+# ranef(chew_2021_mod) #zeros= bad
+# # try running as fixed effect instead of random
+# chew_2021_mod2<-lm(chew_pct~seed_coat*as.factor(sampling.round)+variety_name*seed_coat+site,data=filter(damage,year==2021))
+# anova(chew_2021_mod2) # site and sampling round signif
 
 ```
 round 1 higher than 2 or 3; 4 higher than 2
@@ -189,8 +196,8 @@ emmeans(stip_2021_mod,specs = pairwise ~ sampling.round)
 # summary(stip_2021_mod)
 # ranef(stip_2021_mod) #zeros= bad
 # # try running as fixed effect instead of random
-# stip_2021_mod3<-lm(stip_pct~seed_coat*as.factor(sampling.round)+variety_name*seed_coat+site,data=filter(damage,year==2021))
-# anova(stip_2021_mod3) # site and sampling round signif
+# stip_2021_mod2<-lm(stip_pct~seed_coat*as.factor(sampling.round)+variety_name*seed_coat+site,data=filter(damage,year==2021))
+# anova(stip_2021_mod2) # site and sampling round signif
 
 ```
 round 4 higher than others
@@ -219,9 +226,7 @@ color_chewing_facet<-
          shape="Seed Coat",color="Seed Coat",linetype="Seed Coat") + 
     theme_bw() + theme(panel.grid.minor = element_blank(),
                      strip.text = element_text(face="bold"),
-                     plot.margin = unit(c(0,0,0,0), 'lines'))+scale_x_continuous(breaks=c(3,6,9,12,15))+
-  geom_text(data = filter(damage_siteAvgDf,year==2020),aes(x = 6, y = 18,label = "*"),color="black",size=10)+
-  geom_text(data = filter(damage_siteAvgDf,year==2020),aes(x = 15, y = 13,label = "*"),color="black",size=10)
+                     plot.margin = unit(c(0,0,0,0), 'lines'))+scale_x_continuous(breaks=c(3,6,9,12,15))
 
 color_stippling_facet<-
   ggplot(damage_siteAvgDf, aes(x=weeks_ap,y=site_avg_stip,shape=seed_coat,color=seed_coat,group=seed_coat,
@@ -236,7 +241,7 @@ color_stippling_facet<-
     theme_bw() + theme(panel.grid.minor = element_blank(),
                      strip.text = element_text(face="bold"),
                      plot.margin = unit(c(0,0,0,0), 'lines'))+scale_x_continuous(breaks=c(3,6,9,12,15))+
-  geom_text(data = filter(damage_siteAvgDf,year==2019),aes(x = 3, y = 6,label = "*"),color="black",size=10)
+  geom_text(data = filter(damage_siteAvgDf,year==2019),aes(x = 3.5, y = 5,label = "**"),color="black",size=10)
 
 color_damage_figure <- ggarrange(color_chewing_facet, color_stippling_facet, 
                     labels = c("A", "B"),
@@ -257,7 +262,9 @@ biomass_2019_mod<-lmer(plant_biomass_g~seed_treat+(1|site),data=filter(biomass,y
 anova(biomass_2019_mod)
 summary(biomass_2019_mod)
 plot(biomass_2019_mod)
+emmeans(biomass_2019_mod,specs = pairwise ~ seed_treat) 
 ```
+untreated is higher
 
 ## 2020
 ```{r echo=TRUE}
@@ -277,9 +284,7 @@ biomass_2021_mod<-lmer(plant_biomass_g~seed_treat+(1|site)+(1|brandline),
 anova(biomass_2021_mod)
 summary(biomass_2021_mod)
 plot(biomass_2021_mod)
-emmeans(biomass_2021_mod,specs = pairwise ~ seed_treat) 
 ```
-treated is lower
 
 
 
@@ -292,7 +297,9 @@ beans_2019_mod<-lmer(beans_g~seed_treat+(1|site),data=filter(biomass,year==2019)
 anova(beans_2019_mod)
 summary(beans_2019_mod)
 plot(beans_2019_mod)
+emmeans(beans_2019_mod,specs = pairwise ~ seed_treat) 
 ```
+untreated is higher
 
 ## 2020
 ```{r echo=TRUE}
@@ -312,9 +319,7 @@ beans_2021_mod<-lmer(beans_g~seed_treat+(1|site)+(1|brandline),
 anova(beans_2021_mod)
 summary(beans_2021_mod)
 plot(beans_2021_mod)
-emmeans(beans_2021_mod,specs = pairwise ~ seed_treat) 
 ```
-treated is lower
 
 
 
@@ -326,9 +331,7 @@ biomass_siteAvgDf<-biomass %>%
   summarise(site_avg_plant_biomass=mean(plant_biomass_g,na.rm=T),
             se_plant_biomass=sd(plant_biomass_g,na.rm = T)/sqrt(n()),
             site_avg_beans=mean(beans_g,na.rm=T),
-            se_beans=sd(beans_g,na.rm = T)/sqrt(n()),
-            site_avg_yield=mean(plot_yield_buac,na.rm=T),
-            se_yield=sd(plot_yield_buac,na.rm = T)/sqrt(n()))
+            se_beans=sd(beans_g,na.rm = T)/sqrt(n()))
 
 color_biomass_facet<-
   ggplot(biomass_siteAvgDf,aes(x=rev(seed_treat),y=site_avg_plant_biomass,
@@ -345,7 +348,7 @@ color_biomass_facet<-
   scale_y_continuous(limits = c(27,52))+
   theme_bw() + theme(panel.grid.minor = element_blank(),
                      strip.text = element_text(face="bold",size=rel(1.5)),legend.position = "none")+
-  geom_text(data = filter(biomass_siteAvgDf,year==2021),aes(x = 1.5, y = 47,label = "*"),color="black",size=10)
+  geom_text(data = filter(biomass_siteAvgDf,year==2019),aes(x = 1.5, y = 45,label = "*"),color="black",size=10)
 
 color_beans_facet<-
   ggplot(biomass_siteAvgDf,aes(x=rev(seed_treat),y=site_avg_beans,
@@ -361,7 +364,7 @@ color_beans_facet<-
   scale_y_continuous(limits = c(9,27))+
   theme_bw() + theme(panel.grid.minor = element_blank(),
                      strip.text = element_text(face="bold",size=rel(1.5)),legend.position = "none")+
-  geom_text(data = filter(biomass_siteAvgDf,year==2021),aes(x = 1.5, y = 22.5,label = "*"),color="black",size=10)
+  geom_text(data = filter(biomass_siteAvgDf,year==2019),aes(x = 1.5, y = 19,label = "*"),color="black",size=10)
 
 color_harvest_figure <- ggarrange(color_biomass_facet, color_beans_facet, 
                     labels = c("A", "B"),
@@ -472,13 +475,13 @@ rbind(bugs19,bugs20,bugs21)%>%
 (final-initial)/initial
 ```{r}
 # whole plant biomass 
-biomass_siteAvgDf %>% filter(year==2021) %>% 
+biomass_siteAvgDf %>% filter(year==2019) %>% 
   summarize(((site_avg_plant_biomass[seed_treat=="treated"]-site_avg_plant_biomass[seed_treat=="untreated"])/
               site_avg_plant_biomass[seed_treat=="untreated"])*100
             )
 
 # bean yield 
-biomass_siteAvgDf %>% filter(year==2021) %>% 
+biomass_siteAvgDf %>% filter(year==2019) %>% 
   summarize(((site_avg_beans[seed_treat=="treated"]-site_avg_beans[seed_treat=="untreated"])/
               site_avg_beans[seed_treat=="untreated"])*100
             )
