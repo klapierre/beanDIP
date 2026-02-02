@@ -59,3 +59,15 @@ ggplot()+
 
 ggsave("regional_site_map_labels.png",width = 6,height = 4,units=c("in"))  
 
+
+# all of contig US
+st <- states(cb=T) 
+st_contig <- st %>% filter(!(NAME %in% c("Alaska", "Hawaii","Commonwealth of the Northern Mariana Islands",
+                                         "Puerto Rico","Guam", "American Samoa","United States Virgin Islands")))
+
+ggplot()+
+  geom_sf(data=st_contig)+
+  theme_bw()
+
+ggsave("contig_us.png",width = 6,height = 4,units=c("in"))  
+
