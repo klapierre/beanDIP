@@ -21,16 +21,17 @@ library(lmerTest)
 library(emmeans)
 library(ggpubr)
 library(tidylog)
+library(DHARMa)
 
 
 #### import damage data ####
-damage2019 <- read.csv('~/Dropbox/bean_dip_2018-2024/field trials/data/clean_data/clean_damage_2019.csv') %>% 
+damage2019 <- read.csv('C:/Users/kmcgurri/Dropbox/bean_dip_2018-2024/field trials/data/clean_data/clean_damage_2019.csv') %>% 
   mutate(year=2019,
          variety_name=case_when(variety %in% c(67,27) ~ 'AG38X8'),
          seed_coat=case_when(variety==67 ~ 'untrt',
                              variety==27 ~ 'trt')) %>%
   select(year,sampling.round,site,variety_name,seed_coat,plot,row,chew_pct,pct_leaves_stippled,pct_damage_stippled) 
-damage2020 <- read.csv('~/Dropbox/bean_dip_2018-2024/field trials/data/clean_data/clean_damage_2020.csv') %>% 
+damage2020 <- read.csv('C:/Users/kmcgurri/Dropbox/bean_dip_2018-2024/field trials/data/clean_data/clean_damage_2020.csv') %>% 
   mutate(year=2020,
          variety_name=case_when(variety %in% c(2,5) ~ 'AG38X8'),
          seed_coat=case_when(variety==2 ~ 'untrt',
@@ -38,12 +39,11 @@ damage2020 <- read.csv('~/Dropbox/bean_dip_2018-2024/field trials/data/clean_dat
   filter(!is.na(variety_name)) %>%
   select(year,sampling.round,site,variety_name,seed_coat,plot,row,chew_pct,pct_leaves_stippled,pct_damage_stippled)
 
-damage2021 <- read.csv('~/Dropbox/bean_dip_2018-2024/field trials/data/clean_data/clean_damage_2021.csv') %>% 
+damage2021 <- read.csv('C:/Users/kmcgurri/Dropbox/bean_dip_2018-2024/field trials/data/clean_data/clean_damage_2021.csv') %>% 
   mutate(year=2021,
-         variety_name=case_when(variety %in% c(19,59) ~ 'AG38X8',
-                                variety %in% c(57,58) ~ 'SH3814LL'),
-         seed_coat=case_when(variety %in% c(19,57) ~ 'untrt',
-                             variety %in% c(58,59) ~ 'trt')) %>%
+         variety_name=case_when(variety %in% c(19,59) ~ 'AG38X8'),
+         seed_coat=case_when(variety == 19 ~ 'untrt',
+                             variety == 59 ~ 'trt')) %>%
   filter(!is.na(variety_name)) %>%
   select(year,sampling.round,site,variety_name,seed_coat,plot,row,chew_pct,pct_leaves_stippled,pct_damage_stippled)
 
@@ -55,9 +55,10 @@ damage <- rbind(damage2019, damage2020, damage2021) %>% #bind all data together
   ungroup()
 
 # df = 1 row per plot
+damage |> filter(year==2021)
 # should have 1 variety * 2 coats * 4 sites * 3 plots * 4 rounds = 96 rows for 2019 (yes)
 # should have 1 variety * 2 coats * 4 sites * 3 plots * 5 rounds = 120 rows for 2020 (yes)
-# should have 2 variety * 2 coats * 4 sites * 3 plots * 4 rounds = 192 rows for 2021 (yes)
+# should have 1 variety * 2 coats * 4 sites * 3 plots * 4 rounds = 96 rows for 2021 (yes)
 
 # so sites display properly from west to east
 damage$site<-factor(damage$site, levels = c("K", "C", "W", "PH"))
@@ -82,26 +83,20 @@ damage<-damage %>% mutate(weeks_ap=case_when((year==2019 & sampling.round==1) ~ 
 
 # open clean data file 
 # filter so only varieties/years where we have a treated/untreated comparison
-biomass<-read_csv("~/Dropbox/bean_dip_2018-2024/field trials/data/clean_data/clean_all_years_long.csv") 
+biomass<-read_csv("C:/Users/kmcgurri/Dropbox/bean_dip_2018-2024/field trials/data/clean_data/clean_all_years_long.csv") 
 
-AG<- biomass %>%
+biomass<- biomass %>%
   filter(brandline=="AG38X8") %>%
   filter(year %in% c(2019,2020,2021)) %>%
   select(year:row,plant_biomass_g,beans_g) %>%
   unique() # 2019 PH 27-2-4 had two photosynq measurements, leading to duplicate in joined df. drop artifact.
 
-SH<- biomass %>%
-  filter(brandline=="SH3814 LL") %>%
-  filter(year == 2021) %>%
-  select(year:row,plant_biomass_g,beans_g)
-
-biomass<-rbind(AG,SH)
 
 # df= 1 row per plant
+biomass |> filter(year==2021)
 # should have (6 reps AG38X8 untreated + 4 reps AG38X8 treated) * 4 sites * 3 plots = 120 rows for 2019 (yes)
 # should have (6 reps AG38X8 untreated + 4 reps AG38X8 treated) * 4 sites * 3 plots = 120 rows for 2020 (119)
-# should have (6 reps AG38X8 untreated + 4 reps AG38X8 treated +
-#              4 reps SH untreated + 4 reps SH treated) * 4 sites * 3 plots = 216 rows for 2021 (yes)
+# should have (6 reps AG38X8 untreated + 4 reps AG38X8 treated) * 4 sites * 3 plots = 120 rows for 2021 (yes)
 
 # so sites display properly from west to east
 biomass$site<-factor(biomass$site, levels = c("K", "C", "W", "PH"))
@@ -118,7 +113,8 @@ ggplot(data=filter(damage,year==2019),aes(x=chew_pct))+geom_histogram(binwidth =
 chew_2019_mod<-lmer(chew_pct~seed_coat*as.factor(sampling.round)+(1|site),data=filter(damage,year==2019))
 anova(chew_2019_mod)
 summary(chew_2019_mod)
-plot(chew_2019_mod)
+simulationOutput<-simulateResiduals(fittedModel = chew_2019_mod)
+plot(simulationOutput)
 emmeans(chew_2019_mod,specs = pairwise ~ sampling.round) 
 ```
 round 4 higher than others
@@ -129,31 +125,23 @@ ggplot(data=filter(damage,year==2020),aes(x=chew_pct))+geom_histogram(binwidth =
 chew_2020_mod<-lmer(chew_pct~seed_coat*as.factor(sampling.round)+(1|site),data=filter(damage,year==2020))
 anova(chew_2020_mod)
 summary(chew_2020_mod)
-plot(chew_2020_mod)
+simulationOutput<-simulateResiduals(fittedModel = chew_2020_mod)
+plot(simulationOutput)
 emmeans(chew_2020_mod,specs = pairwise ~ sampling.round) 
 ```
 round 1 lower than others; 2 lower than 3, 4, 5; 5 higher than 3 or 4
 
 ## 2021 
-add random effect for variety. Model has singular fit, so tried running with variety as fixed effect instead of random (see below). seed coat result never changed, so kept simplest model
 ```{r echo=TRUE} 
 ggplot(data=filter(damage,year==2021),aes(x=chew_pct))+geom_histogram(binwidth = 1)
-chew_2021_mod<-lmer(chew_pct~seed_coat*as.factor(sampling.round)+(1|site)+(1|variety_name),
-                       data=filter(damage,year==2021))
+chew_2021_mod<-lmer(chew_pct~seed_coat*as.factor(sampling.round)+(1|site),data=filter(damage,year==2021))
 anova(chew_2021_mod)
 summary(chew_2021_mod)
-plot(chew_2021_mod)
+simulationOutput<-simulateResiduals(fittedModel = chew_2021_mod)
+plot(simulationOutput)
 emmeans(chew_2021_mod,specs = pairwise ~ sampling.round) 
-
-# #singularity check
-# summary(chew_2021_mod)
-# ranef(chew_2021_mod) #zeros= bad
-# # try running as fixed effect instead of random
-# chew_2021_mod2<-lm(chew_pct~seed_coat*as.factor(sampling.round)+variety_name*seed_coat+site,data=filter(damage,year==2021))
-# anova(chew_2021_mod2) # site and sampling round signif
-
 ```
-round 1 higher than 2 or 3; 4 higher than 2
+round 1 higher than 2 or 3
 
 
 
@@ -165,7 +153,8 @@ ggplot(data=filter(damage,year==2019),aes(x=stip_pct))+geom_histogram(binwidth =
 stip_2019_mod<-lmer(stip_pct~seed_coat*as.factor(sampling.round)+(1|site),data=filter(damage,year==2019))
 anova(stip_2019_mod)
 summary(stip_2019_mod)
-plot(stip_2019_mod)
+simulationOutput<-simulateResiduals(fittedModel = stip_2019_mod)
+plot(simulationOutput)
 emmeans(stip_2019_mod,specs = pairwise ~ seed_coat | sampling.round) 
 ```
 round 1: untreated higher
@@ -173,32 +162,44 @@ round 1: untreated higher
 ## 2020
 ```{r echo=TRUE}
 ggplot(data=filter(damage,year==2020),aes(x=stip_pct))+geom_histogram(binwidth = 1)
-stip_2020_mod<-lmer(stip_pct~seed_coat*as.factor(sampling.round)+(1|site),data=filter(damage,year==2020))
-anova(stip_2020_mod)
-summary(stip_2020_mod)
-plot(stip_2020_mod)
-emmeans(stip_2020_mod,specs = pairwise ~ sampling.round) 
+# stip_2020_mod<-lmer(stip_pct~seed_coat*as.factor(sampling.round)+(1|site),data=filter(damage,year==2020))
+# anova(stip_2020_mod)
+# summary(stip_2020_mod)
+# simulationOutput<-simulateResiduals(fittedModel = stip_2020_mod)
+# plot(simulationOutput)
+# emmeans(stip_2020_mod,specs = pairwise ~ sampling.round) 
+# # residuals bad
+# # round 5 higher than others
+
+# try sqrt transforming
+stip_2020_mod2<-lmer(log(stip_pct+1)~seed_coat*as.factor(sampling.round)+(1|site),data=filter(damage,year==2020))
+anova(stip_2020_mod2)
+simulationOutput<-simulateResiduals(fittedModel = stip_2020_mod2)
+plot(simulationOutput)
+emmeans(stip_2020_mod2,specs = pairwise ~ sampling.round) 
 ```
-round 5 higher than others
+round 1,2,3 lower than 4 or 5; 4 lower than 5
+
 
 ## 2021 
-add random effect for variety. Model has singular fit, so tried running with variety as fixed effect instead of random (see below). seed coat result never changed, so kept simplest model
 ```{r echo=TRUE}
 ggplot(data=filter(damage,year==2021),aes(x=stip_pct))+geom_histogram(binwidth = 1)
-stip_2021_mod<-lmer(stip_pct~seed_coat*as.factor(sampling.round)+(1|site)+(1|variety_name),
-                    data=filter(damage,year==2021)) 
-anova(stip_2021_mod)
-summary(stip_2021_mod)
-plot(stip_2021_mod)
-emmeans(stip_2021_mod,specs = pairwise ~ sampling.round) 
-
-# #singularity check
+# stip_2021_mod<-lmer(stip_pct~seed_coat*as.factor(sampling.round)+(1|site),data=filter(damage,year==2021)) 
+# anova(stip_2021_mod)
 # summary(stip_2021_mod)
-# ranef(stip_2021_mod) #zeros= bad
-# # try running as fixed effect instead of random
-# stip_2021_mod2<-lm(stip_pct~seed_coat*as.factor(sampling.round)+variety_name*seed_coat+site,data=filter(damage,year==2021))
-# anova(stip_2021_mod2) # site and sampling round signif
+# simulationOutput<-simulateResiduals(fittedModel = stip_2021_mod)
+# plot(simulationOutput)
+# emmeans(stip_2021_mod,specs = pairwise ~ seed_coat | sampling.round)
+# # residuals bad
+# # round 4: treated higher
 
+# try sqrt transforming
+stip_2021_mod2<-lmer(log(stip_pct+1)~seed_coat*as.factor(sampling.round)+(1|site),data=filter(damage,year==2021)) 
+anova(stip_2021_mod2)
+summary(stip_2021_mod2)
+simulationOutput<-simulateResiduals(fittedModel = stip_2021_mod2)
+plot(simulationOutput)
+emmeans(stip_2021_mod2,specs = pairwise ~ sampling.round)
 ```
 round 4 higher than others
 
@@ -261,29 +262,39 @@ ggplot(data=filter(biomass,year==2019),aes(x=plant_biomass_g))+geom_histogram(bi
 biomass_2019_mod<-lmer(plant_biomass_g~seed_treat+(1|site),data=filter(biomass,year==2019))
 anova(biomass_2019_mod)
 summary(biomass_2019_mod)
-plot(biomass_2019_mod)
+simulationOutput<-simulateResiduals(fittedModel = biomass_2019_mod)
+plot(simulationOutput)
 emmeans(biomass_2019_mod,specs = pairwise ~ seed_treat) 
 ```
 untreated is higher
 
 ## 2020
 ```{r echo=TRUE}
-ggplot(data=filter(biomass,year==2020),aes(x=plant_biomass_g))+geom_histogram(binwidth = 1)
-biomass_2020_mod<-lmer(plant_biomass_g~seed_treat+(1|site),data=filter(biomass,year==2020))
-anova(biomass_2020_mod)
-summary(biomass_2020_mod)
-plot(biomass_2020_mod)
+# ggplot(data=filter(biomass,year==2020),aes(x=plant_biomass_g))+geom_histogram(binwidth = 1)
+# biomass_2020_mod<-lmer(plant_biomass_g~seed_treat+(1|site),data=filter(biomass,year==2020))
+# anova(biomass_2020_mod)
+# summary(biomass_2020_mod)
+# simulationOutput<-simulateResiduals(fittedModel = biomass_2020_mod)
+# plot(simulationOutput)
+# # residuals bad
+
+# try sqrt transforming
+biomass_2020_mod2<-lmer(log(plant_biomass_g+1)~seed_treat+(1|site),data=filter(biomass,year==2020))
+anova(biomass_2020_mod2)
+summary(biomass_2020_mod2)
+simulationOutput<-simulateResiduals(fittedModel = biomass_2020_mod2)
+plot(simulationOutput)
 ```
 
+
 ## 2021 
-add random effect for variety
 ```{r echo=TRUE}
 ggplot(data=filter(biomass,year==2021),aes(x=plant_biomass_g))+geom_histogram(binwidth = 1)
-biomass_2021_mod<-lmer(plant_biomass_g~seed_treat+(1|site)+(1|brandline),
-                       data=filter(biomass,year==2021))
+biomass_2021_mod<-lmer(plant_biomass_g~seed_treat+(1|site),data=filter(biomass,year==2021))
 anova(biomass_2021_mod)
 summary(biomass_2021_mod)
-plot(biomass_2021_mod)
+simulationOutput<-simulateResiduals(fittedModel = biomass_2021_mod)
+plot(simulationOutput)
 ```
 
 
@@ -296,7 +307,8 @@ ggplot(data=filter(biomass,year==2019),aes(x=beans_g))+geom_histogram(binwidth =
 beans_2019_mod<-lmer(beans_g~seed_treat+(1|site),data=filter(biomass,year==2019))
 anova(beans_2019_mod)
 summary(beans_2019_mod)
-plot(beans_2019_mod)
+simulationOutput<-simulateResiduals(fittedModel = beans_2019_mod)
+plot(simulationOutput)
 emmeans(beans_2019_mod,specs = pairwise ~ seed_treat) 
 ```
 untreated is higher
@@ -307,18 +319,18 @@ ggplot(data=filter(biomass,year==2020),aes(x=beans_g))+geom_histogram(binwidth =
 beans_2020_mod<-lmer(beans_g~seed_treat+(1|site),data=filter(biomass,year==2020))
 anova(beans_2020_mod)
 summary(beans_2020_mod)
-plot(beans_2020_mod)
+simulationOutput<-simulateResiduals(fittedModel = beans_2020_mod)
+plot(simulationOutput)
 ```
 
 ## 2021 
-add random effect for variety
 ```{r echo=TRUE}
 ggplot(data=filter(biomass,year==2021),aes(x=plant_biomass_g))+geom_histogram(binwidth = 1)
-beans_2021_mod<-lmer(beans_g~seed_treat+(1|site)+(1|brandline),
-                     data=filter(biomass,year==2021))
+beans_2021_mod<-lmer(beans_g~seed_treat+(1|site),data=filter(biomass,year==2021))
 anova(beans_2021_mod)
 summary(beans_2021_mod)
-plot(beans_2021_mod)
+simulationOutput<-simulateResiduals(fittedModel = beans_2021_mod)
+plot(simulationOutput)
 ```
 
 
@@ -380,7 +392,7 @@ color_harvest_figure <- ggarrange(color_biomass_facet, color_beans_facet,
 
 ## Most common insects
 ```{r echo=FALSE}
-bugs19 <- read.csv('~/Dropbox/bean_dip_2018-2024/field trials/data/clean_data/clean_damage_2019.csv') %>%
+bugs19 <- read.csv('C:/Users/kmcgurri/Dropbox/bean_dip_2018-2024/field trials/data/clean_data/clean_damage_2019.csv') %>%
   filter(variety %in% c(67,27)) %>%
   select(insect.names) %>%
   separate_longer_delim(insect.names, delim = ",") %>%
@@ -406,7 +418,7 @@ bugs19 <- read.csv('~/Dropbox/bean_dip_2018-2024/field trials/data/clean_data/cl
     str_detect(bugs, "beetle")==T ~ "beetle",
   )) 
 
-bugs20 <- read.csv('~/Dropbox/bean_dip_2018-2024/field trials/data/clean_data/clean_damage_2020.csv') %>%
+bugs20 <- read.csv('C:/Users/kmcgurri/Dropbox/bean_dip_2018-2024/field trials/data/clean_data/clean_damage_2020.csv') %>%
   filter(variety %in% c(2,5)) %>%
   select(insect.names) %>%
   separate_longer_delim(insect.names, delim = ",") %>%
@@ -434,7 +446,7 @@ bugs20 <- read.csv('~/Dropbox/bean_dip_2018-2024/field trials/data/clean_data/cl
     str_detect(bugs, "beetle")==T ~ "beetle",
   )) 
 
-bugs21 <- read.csv('~/Dropbox/bean_dip_2018-2024/field trials/data/clean_data/clean_damage_2021.csv') %>%
+bugs21 <- read.csv('C:/Users/kmcgurri/Dropbox/bean_dip_2018-2024/field trials/data/clean_data/clean_damage_2021.csv') %>%
   filter(variety %in% c(19,59,57,58)) %>%
   select(insect.names) %>%
   separate_longer_delim(insect.names, delim = ",") %>%
@@ -493,3 +505,55 @@ biomass_siteAvgDf %>% filter(year==2019) %>%
 ```{r echo=FALSE}
 sessionInfo()
 ```
+
+# Alternative analysis methods
+## All years together
+### Chewing
+```{r echo=TRUE}
+ggplot(data=damage,aes(x=chew_pct))+geom_histogram(binwidth = 1)
+chew_mod<-lmer(chew_pct~seed_coat*as.factor(sampling.round)*as.factor(year)+(1|site),data=damage)
+anova(chew_mod)
+summary(chew_mod)
+simulationOutput<-simulateResiduals(fittedModel = chew_mod)
+plot(simulationOutput)
+emmeans(chew_mod,specs = pairwise ~ seed_coat | sampling.round | year)
+```
+no diffs
+
+### Stippling
+```{r}
+ggplot(data=damage,aes(x=stip_pct))+geom_histogram(binwidth = 1)
+stip_mod<-lmer(stip_pct~seed_coat*as.factor(sampling.round)*as.factor(year)+(1|site),data=damage)
+anova(stip_mod)
+summary(stip_mod)
+simulationOutput<-simulateResiduals(fittedModel = stip_mod)
+plot(simulationOutput)
+emmeans(stip_mod,specs = pairwise ~ seed_coat | sampling.round | year)
+```
+residuals bad
+2019 round 1 and 2021 round 4 treat diffs- same as main analysis
+
+### Biomass
+```{r}
+ggplot(data=biomass,aes(x=plant_biomass_g))+geom_histogram(binwidth = 1)
+biomass_mod<-lmer(plant_biomass_g~seed_treat*as.factor(year)+(1|site),data=biomass)
+anova(biomass_mod)
+summary(biomass_mod)
+simulationOutput<-simulateResiduals(fittedModel = biomass_mod)
+plot(simulationOutput)
+emmeans(biomass_mod,specs = pairwise ~ seed_treat | year) 
+```
+residuals bad
+no diffs
+
+### Beans
+```{r}
+ggplot(data=biomass,aes(x=beans_g))+geom_histogram(binwidth = 1)
+beans_mod<-lmer(beans_g~seed_treat*as.factor(year)+(1|site),data=biomass)
+anova(beans_mod)
+summary(beans_mod)
+simulationOutput<-simulateResiduals(fittedModel = beans_mod)
+plot(simulationOutput)
+emmeans(beans_mod,specs = pairwise ~ seed_treat | year) 
+```
+no diffs
