@@ -221,7 +221,7 @@ color_chewing_facet<-
   geom_errorbar(aes(ymin=site_avg_chew-se_avg_chew,
                       ymax=site_avg_chew+se_avg_chew),width=0.2)+
   scale_shape_manual(values = c(17,19),labels=c("Treated","Untreated"))+
-  scale_color_manual(values=c("#f1a340","#998ec3"),labels=c("Treated","Untreated"))+
+  scale_color_manual(values=c("#998ec3","#f1a340"),labels=c("Treated","Untreated"))+
   scale_linetype_manual(values=c("solid","dashed"),labels=c("Treated","Untreated"))+
   labs(y="Chewing Damage\nAvg % ± SE",x="",
          shape="Seed Coat",color="Seed Coat",linetype="Seed Coat") + 
@@ -235,7 +235,7 @@ color_stippling_facet<-
   geom_errorbar(aes(ymin=site_avg_stip-se_avg_stip,
                       ymax=site_avg_stip+se_avg_stip),width=0.2)+
   scale_shape_manual(values = c(17,19),labels=c("Treated","Untreated"))+
-  scale_color_manual(values=c("#f1a340","#998ec3"),labels=c("Treated","Untreated"))+
+  scale_color_manual(values=c("#998ec3","#f1a340"),labels=c("Treated","Untreated"))+
   scale_linetype_manual(values=c("solid","dashed"),labels=c("Treated","Untreated"))+
   labs(y="Stippling Damage\nAvg % ± SE",x="Weeks After Planting",
          shape="Seed Coat",color="Seed Coat",linetype="Seed Coat") + 
@@ -351,7 +351,7 @@ color_biomass_facet<-
          geom_line()+ geom_point(size=3)+ facet_wrap(~year,nrow=1)+
   scale_linetype_manual(values=c("dashed","solid"),labels=c("Untreated","Treated"))+
   scale_shape_manual(values = c(19,17),labels=c("Untreated","Treated"))+
-  scale_color_manual(values=c("#998ec3","#f1a340"),labels=c("Untreated","Treated"))+
+  scale_color_manual(values=c("#f1a340","#998ec3"),labels=c("Untreated","Treated"))+
          geom_errorbar(aes(ymin=site_avg_plant_biomass-se_plant_biomass,
                            ymax=site_avg_plant_biomass+se_plant_biomass),width=0.2)+
          
@@ -368,7 +368,7 @@ color_beans_facet<-
          geom_line()+ geom_point(size=3)+ facet_wrap(~year,nrow=1)+
   scale_linetype_manual(values=c("dashed","solid"),labels=c("Untreated","Treated"))+
   scale_shape_manual(values = c(19,17),labels=c("Untreated","Treated"))+
-  scale_color_manual(values=c("#998ec3","#f1a340"),labels=c("Untreated","Treated"))+
+  scale_color_manual(values=c("#f1a340","#998ec3"),labels=c("Untreated","Treated"))+
          geom_errorbar(aes(ymin=site_avg_beans-se_beans,
                            ymax=site_avg_beans+se_beans),width=0.2)+
   labs(y="Beans per Plant (g)\nAvg ± SE",x="Seed Coat")+
