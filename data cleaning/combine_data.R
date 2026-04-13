@@ -14,7 +14,7 @@ library(tidyverse)
 site_key<-c("K", "C", "W", "PH")
 
 # working directory path (add yours if different)
-setwd("~/Dropbox/bean_dip_2018-2024/field trials/data")
+setwd("C:/Users/kmcgurri/Dropbox/bean_dip_2018-2024/field trials/data")
 
 ####2019####
 #import data

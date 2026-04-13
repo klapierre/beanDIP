@@ -7,7 +7,7 @@
 ####setup####
 library(readxl)
 library(tidyverse)
-setwd("~/Dropbox/bean_dip_2018-2024/field trials/data")
+setwd("C:/Users/kmcgurri/Dropbox/bean_dip_2018-2024/field trials/data")
 
 ####2020####
 #separate and clean density data

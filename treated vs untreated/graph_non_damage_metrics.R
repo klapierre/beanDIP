@@ -13,8 +13,8 @@ library(tidyverse)
 library(gridExtra)
 library(ggcorrplot)
 
-# working directory (add yours if different)
-setwd("~/Dropbox/bean_dip_2018-2024/field trials/data")
+# working directory path (add yours if different)
+setwd("C:/Users/kmcgurri/Dropbox/bean_dip_2018-2024/field trials/data")
 
 # open clean data file 
 data<-read_csv("clean_data/clean_all_years_long.csv")
@@ -48,6 +48,19 @@ ggplot(siteAvgDf,aes(x=site,y=site_avg,group=seed_treat,linetype=seed_treat,colo
          geom_errorbar(aes(ymin=site_avg-se,
                            ymax=site_avg+se),width=0.2,size=1.5)+
          facet_wrap(~year,nrow=1)
+
+siteAvgDf<-data %>%
+  filter(brandline=="AG38X8") %>%
+  group_by(site,year,brandline,seed_treat) %>%
+  summarise(site_avg=mean(row_dens,na.rm=T),
+            se=sd(row_dens,na.rm = T)/sqrt(n()))
+
+ggplot(siteAvgDf,aes(x=site,y=site_avg,group=seed_treat,linetype=seed_treat,color=seed_treat))+
+  geom_line(size=1.5)+
+  geom_point(size=4)+
+  geom_errorbar(aes(ymin=site_avg-se,
+                    ymax=site_avg+se),width=0.2,size=1.5)+
+  facet_wrap(~year,nrow=1)
 
 # SH3814 2021
 siteAvgDf<-data %>%
