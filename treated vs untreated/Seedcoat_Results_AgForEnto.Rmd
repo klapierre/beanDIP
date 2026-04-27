@@ -500,6 +500,45 @@ biomass_siteAvgDf %>% filter(year==2019) %>%
 
 ```
 
+## Stand density
+```{r}
+dens2019 <- read.csv('C:/Users/kmcgurri/Dropbox/bean_dip_2018-2024/field trials/data/clean_data/clean_damage_2019.csv') %>% 
+  mutate(year=2019,
+         variety_name=case_when(variety %in% c(67,27) ~ 'AG38X8'),
+         seed_coat=case_when(variety==67 ~ 'untrt',
+                             variety==27 ~ 'trt')) %>%
+  select(year,sampling.round,site,variety_name,seed_coat,plot,row,density)%>%
+  filter(sampling.round==1)
+
+dens2020 <- read.csv('C:/Users/kmcgurri/Dropbox/bean_dip_2018-2024/field trials/data/clean_data/clean_damage_2020.csv') %>% 
+  mutate(year=2020,
+         variety_name=case_when(variety %in% c(2,5) ~ 'AG38X8'),
+         seed_coat=case_when(variety==2 ~ 'untrt',
+                             variety==5 ~ 'trt')) %>%
+  filter(!is.na(variety_name)) %>%
+  select(year,sampling.round,site,variety_name,seed_coat,plot,row,density)%>%
+  filter(sampling.round==1)
+
+dens2021 <- read.csv('C:/Users/kmcgurri/Dropbox/bean_dip_2018-2024/field trials/data/clean_data/clean_damage_2021.csv') %>% 
+  mutate(year=2021,
+         variety_name=case_when(variety %in% c(19,59) ~ 'AG38X8'),
+         seed_coat=case_when(variety == 19 ~ 'untrt',
+                             variety == 59 ~ 'trt')) %>%
+  filter(!is.na(variety_name)) %>%
+  select(year,sampling.round,site,variety_name,seed_coat,plot,row,density)%>%
+  filter(sampling.round==1)
+
+
+density <- rbind(dens2019, dens2020, dens2021) %>% #bind all data together
+  group_by(year, site, variety_name, seed_coat, plot) %>% # average rows a and b to get one value per plot
+  summarise(avg_plot_density= mean(density, na.rm = TRUE),
+            plants_per_foot=avg_plot_density/4)
+
+density |> group_by(year, seed_coat) |>
+  summarize(stand_density= mean(plants_per_foot,na.rm=T))
+
+```
+
 
 # Session Info
 ```{r echo=FALSE}
