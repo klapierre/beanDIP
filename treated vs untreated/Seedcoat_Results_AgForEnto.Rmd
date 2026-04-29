@@ -534,8 +534,45 @@ density <- rbind(dens2019, dens2020, dens2021) %>% #bind all data together
   summarise(avg_plot_density= mean(density, na.rm = TRUE),
             plants_per_foot=avg_plot_density/4)
 
-density |> group_by(year, seed_coat) |>
-  summarize(stand_density= mean(plants_per_foot,na.rm=T))
+# summary table for mean and SE
+density_siteAvgDf<-density %>%
+  group_by(year,seed_coat) %>%
+  summarise(site_avg_stand_density=mean(plants_per_foot,na.rm=T),
+            se_stand_density=sd(plants_per_foot,na.rm = T)/sqrt(n()))
+
+ggplot(density_siteAvgDf,aes(x=rev(seed_coat),y=site_avg_stand_density,
+        shape=rev(seed_coat),linetype=rev(seed_coat),color=rev(seed_coat)))+
+         geom_line()+ geom_point(size=3)+ facet_wrap(~year,nrow=1)+
+  scale_linetype_manual(values=c("dashed","solid"),labels=c("Untreated","Treated"))+
+  scale_shape_manual(values = c(19,17),labels=c("Untreated","Treated"))+
+  scale_color_manual(values=c("#f1a340","#998ec3"),labels=c("Untreated","Treated"))+
+         geom_errorbar(aes(ymin=site_avg_stand_density-se_stand_density,
+                           ymax=site_avg_stand_density+se_stand_density),width=0.2)+
+  labs(y="Stand Density (plants/ft)\nAvg ± SE",x="")+
+  scale_x_discrete(labels=c("Untreated","Treated")) +
+  theme_bw() + theme(panel.grid.minor = element_blank(),
+                     strip.text = element_text(face="bold",size=rel(1.5)),legend.position = "none")
+
+
+ggplot(data=filter(density,year==2019),aes(x=plants_per_foot))+geom_histogram(binwidth = 1)
+dens_2019_mod<-lmer(plants_per_foot~seed_coat+(1|site),data=filter(density,year==2019))
+anova(dens_2019_mod)
+simulationOutput<-simulateResiduals(fittedModel = dens_2019_mod)
+plot(simulationOutput)
+
+ggplot(data=filter(density,year==2020),aes(x=plants_per_foot))+geom_histogram(binwidth = 1)
+dens_2020_mod<-lmer(plants_per_foot~seed_coat+(1|site),data=filter(density,year==2020))
+anova(dens_2020_mod)
+simulationOutput<-simulateResiduals(fittedModel = dens_2020_mod)
+plot(simulationOutput)
+
+ggplot(data=filter(density,year==2021),aes(x=plants_per_foot))+geom_histogram(binwidth = 1)
+dens_2021_mod<-lmer(plants_per_foot~seed_coat+(1|site),data=filter(density,year==2021))
+anova(dens_2021_mod)
+simulationOutput<-simulateResiduals(fittedModel = dens_2021_mod)
+plot(simulationOutput)
+
+
 
 ```
 
